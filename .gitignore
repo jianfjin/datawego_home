@@ -1,0 +1,29 @@
+# ── DSH / tooling artifacts ──────────────────────────────
+.acl-recovery/
+*.od-*.json
+*.od-i-*.csv
+*.opendesign.zip
+
+# ── OS files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Editors / IDEs ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Local archives / scratch ─────────────────────────────
+*.zip
+*.bak
+
+# ── Node (only if a build step is introduced later) ──────
+node_modules/
+
+# ── Logs / temp ──────────────────────────────────────────
+*.log
+*.tmp
+tmp/

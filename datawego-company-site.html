@@ -1,0 +1,1635 @@
+<!doctype html>
+<!--
+  DataWeGo — company website prototype.
+  Seed: web-prototype/assets/template.html  ·  Design system: Apple (tokens.css :root, pasted verbatim)
+  Imagery: project-local `resources/DataWeGo_banner.png` (hero) and `resources/DataWeGo_Logo.png` (footer brand mark). No remote hotlinks.
+  Languages: English is the authored markup; Dutch is applied at runtime from the NL dictionary in the closing script
+  (EN/NL control in the nav bar, choice remembered in localStorage["datawego-lang"], browser language used as the default).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DataWeGo — AI-Powered Data Platforms for Healthcare, Life Sciences & Enterprise</title>
+<meta name="description" content="DataWeGo is a data engineering and AI consulting company building AI-powered data platforms for healthcare, life sciences and enterprise innovation." />
+<script>
+/* theme boot — resolve before first paint so the page never flashes light-on-dark */
+(function () {
+  var stored = null;
+  try { stored = localStorage.getItem("datawego-theme"); } catch (e) {}
+  var dark = stored ? stored === "dark"
+    : !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  /* language boot — resolve before first paint so a Dutch visitor never sees English flash */
+  var saved = null;
+  try { saved = localStorage.getItem("datawego-lang"); } catch (e) {}
+  var lang = (saved === "en" || saved === "nl") ? saved
+    : String(navigator.language || navigator.userLanguage || "").toLowerCase().indexOf("nl") === 0 ? "nl" : "en";
+  document.documentElement.setAttribute("lang", lang);
+  document.documentElement.setAttribute("data-lang", lang);
+})();
+</script>
+<style>
+/* ─── design-system tokens — Apple (verbatim) ─────────────────────────── */
+:root {
+  --bg: #ffffff;
+  --surface: #f5f5f7;
+  --surface-warm: #fbfbfd;
+
+  --fg: #1d1d1f;
+  --fg-2: #424245;
+  --muted: #6e6e73;
+  --meta: #86868b;
+
+  --border: #d2d2d7;
+  --border-soft: #e8e8ed;
+
+  --accent: #0071e3;
+  --accent-on: #ffffff;
+  --accent-hover: #0077ed;
+  --accent-active: #0066cc;
+
+  --success: #16a34a;
+  --warn:    #eab308;
+  --danger:  #dc2626;
+
+  --font-display:
+    "SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body:
+    "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:
+    "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 17px;
+  --text-lg:   21px;
+  --text-xl:   28px;
+  --text-2xl:  40px;
+  --text-3xl:  56px;
+  --text-4xl:  80px;
+
+  --leading-body:  1.47;
+  --leading-tight: 1.05;
+
+  --tracking-display: -0.015em;
+
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+
+  --section-y-desktop: 100px;
+  --section-y-tablet:  64px;
+  --section-y-phone:   40px;
+
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-pill: 980px;
+
+  --elev-flat:   none;
+  --elev-ring:   0 0 0 1px var(--border);
+  --elev-raised: 0 12px 32px rgba(0, 0, 0, 0.08);
+
+  --focus-ring: 0 0 0 4px color-mix(in oklab, var(--accent), transparent 65%);
+
+  --motion-fast:   150ms;
+  --motion-base:   220ms;
+  --ease-standard: cubic-bezier(0.28, 0, 0.22, 1);
+
+  --container-max:            1024px;
+  --container-gutter-desktop: 22px;
+  --container-gutter-tablet:  18px;
+  --container-gutter-phone:   16px;
+}
+
+/* ─── derived helpers (color-mix only — no new palette) ────────────────── */
+:root {
+  color-scheme: light;
+  --canvas-wide: 1180px;
+  --chapter-dark: color-mix(in oklab, var(--fg), black 62%);
+  --chapter-dark-2: color-mix(in oklab, var(--fg), black 48%);
+  --on-dark: color-mix(in oklab, white, var(--bg) 88%);
+  --on-dark-muted: color-mix(in oklab, white, transparent 42%);
+  --on-dark-border: color-mix(in oklab, white, transparent 86%);
+  --accent-on-dark: color-mix(in oklab, var(--accent), white 42%);
+  --hairline: color-mix(in oklab, var(--fg), transparent 90%);
+  --success-ink: color-mix(in oklab, var(--success), black 32%);
+  --danger-ink: var(--danger);
+  --artwork-matte: var(--bg);
+}
+
+/* ─── dark theme ─────────────────────────────────────────────────────────
+ * Same token names, only DESIGN.md §2 documented values, re-bound for a
+ * dark canvas: Near-Black Ink page field, Absolute Black recessive bands,
+ * Graphite A as the lift tier, the inverted neutral ramp, and the
+ * High-Luminance Link Blue that Apple reserves for darker scenes.
+ * Selected by the header toggle (remembered); light remains the default. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #1d1d1f;
+  --surface: #000000;
+  --surface-warm: #272729;
+
+  --fg: #f5f5f7;
+  --fg-2: #d2d2d7;
+  --muted: color-mix(in oklab, var(--fg), var(--meta) 45%);
+  --meta: #86868b;
+
+  --border: #424245;
+  --border-soft: #2a2a2c;
+
+  --accent: #2997ff;
+  --accent-on: #000000;
+  --accent-hover: color-mix(in oklab, var(--accent), white 22%);
+  --accent-active: color-mix(in oklab, var(--accent), black 8%);
+
+  --elev-raised: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --focus-ring: 0 0 0 4px color-mix(in oklab, var(--accent), transparent 55%);
+
+  --chapter-dark: #000000;
+  --chapter-dark-2: #272729;
+  --on-dark: #f5f5f7;
+  --on-dark-muted: #86868b;
+  --on-dark-border: color-mix(in oklab, white, transparent 82%);
+  --accent-on-dark: var(--accent);
+  --hairline: color-mix(in oklab, var(--fg), transparent 88%);
+  --success-ink: color-mix(in oklab, var(--success), white 52%);
+  --danger-ink: color-mix(in oklab, var(--danger), white 46%);
+  --artwork-matte: #f5f5f7;
+}
+
+/* ─── reset & base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  letter-spacing: -0.006em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+img, svg { display: block; max-width: 100%; }
+a { color: var(--accent-active); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+button { font: inherit; cursor: pointer; }
+p { text-wrap: pretty; margin: 0; }
+h1, h2, h3, h4 { text-wrap: balance; margin: 0; font-family: var(--font-display); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
+/* theme cross-fade — component rules below re-declare their own transitions,
+ * so hover/press feedback keeps its own timing and only wins where defined. */
+body, header, section, footer, .banner, .chip, .arch-node, .card,
+.input, .textarea, .select, .summary, .rule, .ds-table th, .ds-table td {
+  transition: background-color var(--motion-base) var(--ease-standard),
+              color var(--motion-base) var(--ease-standard),
+              border-color var(--motion-base) var(--ease-standard);
+}
+
+/* ─── layout primitives ────────────────────────────────────────────────── */
+.container { max-width: var(--canvas-wide); margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); }
+.narrow    { max-width: 760px; }
+.section   { padding-block: clamp(var(--section-y-phone), 9vw, var(--section-y-desktop)); }
+.chapter   { background: var(--chapter-dark); color: var(--on-dark); }
+.stack     { display: flex; flex-direction: column; }
+.stack > * + * { margin-top: var(--space-5); }
+.row       { display: flex; align-items: center; gap: var(--space-5); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+.grid-2    { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-8); }
+.grid-3    { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-8); }
+.grid-2-1  { display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(32px, 6vw, 72px); align-items: center; }
+.grid-1-2  { display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(32px, 6vw, 72px); align-items: start; }
+@media (max-width: 920px) {
+  .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+}
+
+/* ─── type ─────────────────────────────────────────────────────────────── */
+.display {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4.6vw, 54px);
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  font-weight: 600;
+  text-wrap: balance;
+}
+.h2 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.6vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.012em;
+  font-weight: 600;
+}
+.h3 { font-family: var(--font-display); font-size: var(--text-xl); line-height: 1.18; letter-spacing: -0.006em; font-weight: 600; }
+.lead { font-size: var(--text-lg); line-height: 1.45; color: var(--muted); max-width: 60ch; }
+.chapter .lead { color: var(--on-dark-muted); }
+.body-muted { color: var(--muted); font-size: var(--text-base); }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 var(--space-4);
+}
+.chapter .eyebrow { color: var(--accent-on-dark); }
+.meta { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.04em; color: var(--muted); }
+.num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.link-inline { color: var(--fg-2); text-decoration: none; border-bottom: 1px solid var(--border); transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.link-inline:hover { color: var(--accent-active); border-bottom-color: var(--accent-active); text-decoration: none; }
+
+/* ─── topnav ───────────────────────────────────────────────────────────── */
+.topnav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in oklab, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border-soft);
+  transition: border-color var(--motion-base) var(--ease-standard), background var(--motion-base) var(--ease-standard);
+}
+.topnav.scrolled { border-bottom-color: var(--border); }
+.topnav-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); min-height: 56px; }
+.logo { display: inline-flex; align-items: baseline; gap: 2px; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.02em; color: var(--fg); }
+.logo b { font-weight: 600; }
+.logo i { font-style: normal; font-weight: 400; color: var(--fg-2); }
+.topnav nav { display: flex; gap: clamp(14px, 2vw, 28px); }
+.topnav nav a { font-size: var(--text-sm); color: var(--fg-2); padding-block: 6px; transition: color var(--motion-fast) var(--ease-standard); }
+.topnav nav a:hover { color: var(--fg); text-decoration: none; }
+.topnav nav a[aria-current="true"] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--fg-2); border-radius: 2px; }
+.nav-actions { display: flex; align-items: center; gap: var(--space-3); }
+.menu-toggle {
+  display: none; align-items: center; gap: var(--space-2);
+  min-height: 44px; padding: 8px 16px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  font-size: var(--text-sm); font-weight: 500;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+.menu-toggle:hover { border-color: var(--meta); }
+.menu-toggle svg { width: 16px; height: 16px; }
+.nav-contact { display: none; }
+@media (max-width: 980px) {
+  .topnav-inner { position: relative; }
+  .menu-toggle { display: inline-flex; }
+  .topnav nav {
+    display: none;
+    position: absolute; top: calc(100% + 10px); left: 0; right: 0; z-index: 30;
+    flex-direction: column; gap: 2px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--elev-raised);
+    padding: var(--space-2);
+  }
+  .topnav nav.open { display: flex; }
+  .topnav nav a { padding: 13px var(--space-4); font-size: var(--text-base); border-radius: var(--radius-md); }
+  .topnav nav a:hover { background: var(--surface); }
+  .topnav nav a[aria-current="true"] { background: var(--surface); box-shadow: none; }
+  .nav-contact { display: block; color: var(--accent-active); font-weight: 500; border-top: 1px solid var(--border-soft); border-radius: 0; margin-top: var(--space-2); padding-top: var(--space-4); }
+}
+@media (max-width: 720px) { .topnav .btn { display: none; } }
+@media (max-width: 600px) {
+  /* the utility cluster keeps its 44px controls; the menu label folds to icon-only
+     so the language pill never pushes the bar into horizontal scroll */
+  .nav-actions { gap: var(--space-2); }
+  .menu-toggle { width: 44px; padding: 0; justify-content: center; }
+  .menu-toggle span { display: none; }
+}
+@media (max-width: 980px) {
+  /* dark: the open menu highlights upward onto the graphite lift tone
+     instead of sinking into the recessive black band colour */
+  :root[data-theme="dark"] .topnav nav a:hover,
+  :root[data-theme="dark"] .topnav nav a[aria-current="true"] { background: var(--surface-warm); }
+}
+
+/* ─── buttons ──────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: 44px; padding: 11px 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-family: var(--font-body); font-size: var(--text-base); font-weight: 500; letter-spacing: -0.01em;
+  text-decoration: none;
+  transition: background var(--motion-base) var(--ease-standard),
+              border-color var(--motion-base) var(--ease-standard),
+              color var(--motion-base) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-standard);
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); color: var(--accent-on); }
+.btn-primary:hover { background: var(--accent-hover); text-decoration: none; }
+.btn-secondary { background: transparent; color: var(--accent-active); border-color: color-mix(in oklab, var(--accent), transparent 45%); }
+.btn-secondary:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+.chapter .btn-secondary { color: var(--accent-on-dark); border-color: color-mix(in oklab, var(--accent-on-dark), transparent 55%); }
+.btn-quiet { background: transparent; color: var(--fg); padding-inline: var(--space-3); }
+.btn-quiet:hover { color: var(--accent-active); text-decoration: none; }
+.btn-arrow::after { content: "→"; transition: transform var(--motion-base) var(--ease-standard); }
+.btn-arrow:hover::after { transform: translateX(3px); }
+.btn-sm { min-height: 36px; padding: 7px 16px; font-size: var(--text-sm); }
+
+/* ─── theme toggle — circular control, border-led (Apple §4) ───────────── */
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0;
+  background: transparent; color: var(--fg-2);
+  border: 1px solid var(--border); border-radius: 50%;
+  transition: color var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-standard);
+}
+.theme-toggle:hover { color: var(--fg); border-color: var(--meta); }
+.theme-toggle:active { transform: scale(0.96); }
+.theme-toggle svg { width: 19px; height: 19px; }
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* ─── language switch — segmented pill, same 44px control geometry ─────── */
+.lang-switch {
+  display: inline-flex; align-items: center; gap: 2px; padding: 1px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+.lang-switch:hover { border-color: var(--meta); }
+.lang-btn {
+  min-width: 42px; height: 40px; padding: 0 var(--space-2);
+  background: transparent; color: var(--fg-2);
+  border: 0; border-radius: var(--radius-pill); cursor: pointer;
+  font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500;
+  letter-spacing: 0.08em;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.lang-btn:hover { color: var(--fg); }
+.lang-btn:hover:not([aria-pressed="true"]) { background: color-mix(in oklab, var(--fg), transparent 92%); }
+.lang-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.lang-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+:root[data-theme="dark"] ::selection {
+  background: color-mix(in oklab, var(--accent), transparent 58%);
+  color: var(--fg);
+}
+
+/* ─── cards & chips ────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: clamp(22px, 2.4vw, 32px);
+  transition: box-shadow var(--motion-base) var(--ease-standard),
+              background-color var(--motion-base) var(--ease-standard),
+              border-color var(--motion-base) var(--ease-standard),
+              transform var(--motion-base) var(--ease-standard);
+}
+.card:hover { border-color: var(--border); box-shadow: var(--elev-raised); }
+/* dark: graphite cards must float on both the page field and the black bands */
+:root[data-theme="dark"] .card { background: var(--surface-warm); }
+:root[data-theme="dark"] .card:hover { background: color-mix(in oklab, var(--surface-warm), var(--fg) 6%); }
+.card-tint { background: var(--surface); }
+.card-dark { background: var(--chapter-dark-2); border-color: var(--on-dark-border); }
+.card-dark:hover { border-color: color-mix(in oklab, white, transparent 72%); box-shadow: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.03em;
+  color: var(--fg-2); background: var(--bg);
+}
+.chapter .chip { border-color: var(--on-dark-border); color: var(--on-dark-muted); background: transparent; }
+.rule { border: 0; border-top: 1px solid var(--border-soft); margin: 0; }
+
+/* ─── feature cell ─────────────────────────────────────────────────────── */
+.feature .feature-mark {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  color: var(--fg-2); background: var(--bg); margin-bottom: var(--space-5);
+  transition: border-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
+}
+.feature:hover .feature-mark { border-color: var(--accent); color: var(--accent-active); }
+.feature .feature-mark svg { width: 20px; height: 20px; }
+.chapter .feature .feature-mark { background: transparent; border-color: var(--on-dark-border); color: var(--accent-on-dark); }
+.feature h3 { margin-bottom: var(--space-2); }
+.feature p { color: var(--muted); font-size: var(--text-base); }
+.chapter .feature p { color: var(--on-dark-muted); }
+.feature ul { margin: var(--space-4) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.feature ul li { font-size: var(--text-sm); color: var(--fg-2); padding-left: 16px; position: relative; }
+.chapter .feature ul li { color: var(--on-dark-muted); }
+.feature ul li::before { content: ""; position: absolute; left: 0; top: 9px; width: 6px; height: 1px; background: var(--meta); }
+
+/* ─── hero ─────────────────────────────────────────────────────────────── */
+.hero { background: var(--surface-warm); border-bottom: 1px solid var(--border-soft); padding-block: 0; }
+.hero-body { padding-block: clamp(40px, 5.6vw, 88px); }
+.hero-copy { min-width: 0; }
+.hero h1 { margin-bottom: var(--space-6); }
+/* hero title runs the whole row — bleeds out of the container gutter to an
+ * 8px inset, mirroring the edge-to-edge banner above it (no viewport math,
+ * so the headline can never be clipped at any width). */
+.hero h1.display {
+  max-width: none;
+  margin-inline: calc(-1 * (clamp(16px, 4vw, 40px) - 8px));
+  font-size: clamp(34px, 5.4vw, 72px);
+  line-height: 1.04;
+}
+.hero-cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
+.hero-facts { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-8); }
+
+/* brand banner — flush to the top of the document, edge-to-edge across the row */
+.banner {
+  margin: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border-soft);
+}
+.banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* fixed-colour brand art keeps a light plate on the dark canvas, never a recoloured logo */
+  background: var(--artwork-matte);
+  /* natural ratio, never cropped; the cap only engages on very wide canvases */
+  max-height: min(72vh, 760px);
+  object-fit: contain;
+}
+.banner figcaption {
+  display: flex; justify-content: space-between; gap: var(--space-4);
+  max-width: var(--canvas-wide); margin-inline: auto;
+  padding: var(--space-3) clamp(16px, 4vw, 40px);
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.03em; color: var(--muted);
+}
+
+/* ─── data lifecycle flow (dark chapter flourish) ──────────────────────── */
+.flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--on-dark-border); border: 1px solid var(--on-dark-border); border-radius: var(--radius-lg); overflow: hidden; }
+.flow-step { background: var(--chapter-dark); padding: var(--space-6) var(--space-5) var(--space-8); display: flex; flex-direction: column; gap: var(--space-3); min-height: 176px; transition: background var(--motion-base) var(--ease-standard); }
+.flow-step:hover { background: var(--chapter-dark-2); }
+.flow-step .meta { color: var(--on-dark-muted); }
+.flow-step h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; }
+.flow-step p { font-size: var(--text-sm); line-height: 1.42; color: var(--on-dark-muted); }
+@media (max-width: 1080px) { .flow { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .flow { grid-template-columns: 1fr; } .flow-step { min-height: 0; } }
+
+/* #lifecycle now sits on the shared page surface instead of a dark chapter,
+   so its flow strip switches to the same token pairing the architecture
+   schematic uses. Scoped to #lifecycle — it is the only consumer. */
+#lifecycle .flow { background: var(--border); border-color: var(--border); }
+#lifecycle .flow-step { background: var(--bg); }
+#lifecycle .flow-step .meta { color: var(--muted); }
+#lifecycle .flow-step p { color: var(--muted); }
+#lifecycle .flow-step:hover { background: var(--surface-warm); }
+#lifecycle .flow-step:hover p { color: var(--fg-2); }
+
+/* ─── architecture schematic ───────────────────────────────────────────── */
+.arch { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.arch-band { background: var(--bg); padding: var(--space-5) var(--space-6); display: grid; grid-template-columns: 132px 1fr; gap: var(--space-5); align-items: center; transition: background var(--motion-base) var(--ease-standard); }
+.arch-band:hover { background: var(--surface-warm); }
+.arch-band .meta { color: var(--muted); }
+.arch-nodes { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.arch-node { padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius-pill); font-size: var(--text-sm); color: var(--fg-2); background: var(--bg); }
+.arch-node.is-key { border-color: color-mix(in oklab, var(--accent), transparent 40%); color: var(--accent-active); background: color-mix(in oklab, var(--accent), transparent 94%); }
+@media (max-width: 640px) { .arch-band { grid-template-columns: 1fr; gap: var(--space-3); } }
+
+/* ─── company profile ──────────────────────────────────────────────────── */
+.facts { margin: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.facts > div { display: grid; grid-template-columns: 124px 1fr; gap: var(--space-4); align-items: baseline; }
+.facts dt { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-size: var(--text-base); color: var(--fg-2); }
+@media (max-width: 520px) { .facts > div { grid-template-columns: 1fr; gap: 2px; } }
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+
+/* ─── step list (approach) ─────────────────────────────────────────────── */
+.step-row { display: grid; grid-template-columns: 92px 1fr 200px; gap: var(--space-8); padding: var(--space-6) 0; border-top: 1px solid var(--border-soft); align-items: baseline; transition: background var(--motion-base) var(--ease-standard); }
+.step-row:hover { background: var(--surface-warm); }
+.step-row:last-child { border-bottom: 1px solid var(--border-soft); }
+.step-row h3 { font-size: var(--text-lg); }
+.step-row p { margin-top: 6px; color: var(--muted); font-size: var(--text-base); max-width: 58ch; }
+.step-row .pull { text-align: right; }
+@media (max-width: 920px) {
+  .step-row { grid-template-columns: 56px 1fr; gap: var(--space-4); }
+  .step-row .pull { grid-column: 2; text-align: left; margin-top: var(--space-2); }
+}
+
+/* ─── principles table ─────────────────────────────────────────────────── */
+.ds-table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.ds-table th, .ds-table td { padding: var(--space-5) var(--space-5) var(--space-5) 0; text-align: left; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.ds-table th { color: var(--muted); font-weight: 500; font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; padding-bottom: var(--space-4); }
+.ds-table td:last-child, .ds-table th:last-child { padding-right: 0; width: 44%; }
+.ds-table tbody tr:hover td { background: var(--surface-warm); }
+.ds-table tbody tr:hover td:last-child { border-bottom-right-radius: var(--radius-sm); }
+.ds-table .t-name { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); letter-spacing: -0.01em; white-space: nowrap; }
+.ds-table .t-desc { color: var(--muted); }
+@media (max-width: 820px) {
+  .ds-table thead { display: none; }
+  .ds-table, .ds-table tbody, .ds-table tr, .ds-table td { display: block; width: 100%; }
+  .ds-table tr { border-bottom: 1px solid var(--border); padding-block: var(--space-5); }
+  .ds-table td { padding: 4px 0; border: 0; width: auto !important; }
+}
+
+/* ─── contact ──────────────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+@media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field.full { grid-column: 1 / -1; }
+.field label { font-size: var(--text-sm); color: var(--fg-2); font-weight: 500; }
+.input, .textarea, .select {
+  width: 100%; padding: 11px var(--space-4);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg); color: var(--fg);
+  font: inherit; font-size: var(--text-base);
+  transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard),
+              background-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
+}
+.input::placeholder, .textarea::placeholder { color: var(--muted); }
+.input:hover, .textarea:hover, .select:hover { border-color: var(--meta); }
+.input:focus-visible, .textarea:focus-visible, .select:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+.textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+.field-error { font-size: var(--text-sm); color: var(--danger-ink); min-height: 1.2em; }
+.input[aria-invalid="true"], .textarea[aria-invalid="true"] { border-color: var(--danger); }
+.notice {
+  border: 1px solid color-mix(in oklab, var(--success), transparent 55%);
+  background: color-mix(in oklab, var(--success), transparent 92%);
+  color: var(--success-ink);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); font-size: var(--text-sm);
+}
+.summary { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); padding: var(--space-5); font-size: var(--text-sm); }
+.summary dl { display: grid; grid-template-columns: 128px 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.summary dt { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.summary dd { margin: 0; color: var(--fg-2); overflow-wrap: anywhere; }
+#brief-out { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
+#brief-out[hidden] { display: none; }
+
+/* ─── footer ───────────────────────────────────────────────────────────── */
+.pagefoot { background: var(--surface); border-top: 1px solid var(--border-soft); padding-block: clamp(40px, 6vw, 72px) var(--space-8); font-size: var(--text-sm); color: var(--muted); }
+.foot-grid { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: var(--space-8); }
+@media (max-width: 860px) { .foot-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .foot-grid { grid-template-columns: 1fr; } }
+.pagefoot h4 { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: var(--space-4); }
+.pagefoot ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.pagefoot a { color: var(--fg-2); }
+.pagefoot a:hover { color: var(--accent-active); }
+.foot-bottom { margin-top: clamp(32px, 5vw, 56px); padding-top: var(--space-6); border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); }
+
+/* ─── reveal ───────────────────────────────────────────────────────────── */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity 620ms var(--ease-standard), transform 620ms var(--ease-standard); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .btn-arrow:hover::after { transform: none; }
+  body, header, section, footer, .banner, .chip, .arch-node, .card,
+  .input, .textarea, .select, .summary { transition-duration: 1ms; }
+}
+</style>
+</head>
+<body>
+
+<header class="topnav" id="topnav" data-od-id="topnav">
+  <div class="container topnav-inner">
+    <a class="logo" href="#top" data-od-id="nav-logo" aria-label="DataWeGo home"><b>Data</b><i>WeGo</i></a>
+    <nav id="primary-nav" aria-label="Primary">
+      <a href="#about" data-nav="about">Company</a>
+      <a href="#capabilities" data-nav="capabilities">Capabilities</a>
+      <a href="#lifecycle" data-nav="lifecycle">Platform</a>
+      <a href="#industries" data-nav="industries">Industries</a>
+      <a href="#approach" data-nav="approach">Approach</a>
+      <a class="nav-contact" href="#contact">Talk to an engineer</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to dark theme" title="Switch to dark theme" data-od-id="nav-theme-toggle">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A8.4 8.4 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.1"/><path d="M12 3.2v1.9M12 18.9v1.9M3.2 12h1.9M18.9 12h1.9M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M18.2 5.8l-1.4 1.4M7.2 16.8l-1.4 1.4"/></svg>
+      </button>
+      <div class="lang-switch" role="group" aria-label="Language" data-od-id="nav-lang-switch">
+        <button class="lang-btn" type="button" data-lang-opt="en" aria-pressed="true" lang="en">EN</button>
+        <button class="lang-btn" type="button" data-lang-opt="nl" aria-pressed="false" lang="nl">NL</button>
+      </div>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-od-id="nav-menu-toggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        <span>Menu</span>
+      </button>
+      <a class="btn btn-secondary btn-sm" href="#contact" data-od-id="nav-cta">Talk to an engineer</a>
+    </div>
+  </div>
+</header>
+
+<main id="content">
+
+  <!-- ── 1 · HERO (full-bleed brand band on top, copy below) ────────────── -->
+  <section class="hero" id="top" data-od-id="hero">
+    <figure class="banner" data-od-id="hero-figure">
+      <img src="resources/DataWeGo_banner.png" alt="DataWeGo brand banner" loading="eager" width="347" height="129" />
+      <figcaption><span>DataWeGo</span><span class="num">data infrastructure &amp; analytics</span></figcaption>
+    </figure>
+
+    <div class="container hero-body">
+      <div class="hero-copy">
+        <p class="eyebrow">DataWeGo · Den Haag, Netherlands</p>
+        <h1 class="display">Turning data into decisions. Turning AI into business value.</h1>
+        <p class="lead" style="margin-top: 24px;">A data engineering and AI consulting company building AI-powered data platforms for healthcare, life sciences and enterprise innovation.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#contact" data-od-id="hero-cta-primary">Book an architecture review</a>
+          <a class="btn btn-quiet btn-arrow" href="#lifecycle" data-od-id="hero-cta-secondary">See how we work end to end</a>
+        </div>
+        <div class="hero-facts">
+          <span class="chip">Data infrastructure &amp; analytics</span>
+          <span class="chip">Cloud-native</span>
+          <span class="chip">Secure by design</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2 · COMPANY PROFILE (custom: intro copy + fact card) ───────────── -->
+  <section class="section" id="about" data-od-id="about" style="background: var(--surface); border-bottom: 1px solid var(--border-soft);">
+    <div class="container grid-2-1">
+      <div class="stack" style="grid-column: 1 / -1; gap: var(--space-6);">
+        <p class="eyebrow">Who we are</p>
+        <h2 class="h2" data-od-id="about-title" style="max-width: none;">Independent on purpose:<br />you work with the person who builds it.</h2>
+      </div>
+      <div class="stack" style="gap: var(--space-6); align-self: start;">
+        <p class="lead">DataWeGo is a Dutch data engineering and AI consulting company. We turn complex operational, clinical and research data into platforms people trust — and into models that change what an organisation does next.</p>
+        <p class="body-muted">The architect who scopes an engagement is the engineer who ships it. No account layer between you and the build, no rotation mid-project, and documentation written so your team can run the platform without us.</p>
+        <p class="body-muted" style="max-width: 62ch;">Our work covers the complete data lifecycle: ingestion and integration, modelling and analytics, machine learning and automation, governance, and scalable cloud deployment.</p>
+      </div>
+
+      <div class="card" data-od-id="about-facts" style="align-self: start;">
+        <dl class="facts">
+          <div><dt>Industry</dt><dd>Data infrastructure &amp; analytics</dd></div>
+          <div><dt>Headquarters</dt><dd>Den Haag, Zuid-Holland — Netherlands</dd></div>
+          <div><dt>Model</dt><dd>Independent specialist consultancy</dd></div>
+          <div><dt>Sectors</dt><dd>Healthcare, life sciences, enterprise innovation</dd></div>
+          <div><dt>Online</dt><dd><a class="link-inline" href="https://www.datawego.nl" target="_blank" rel="noopener">datawego.nl</a> · <a class="link-inline" href="https://www.linkedin.com/company/datawego" target="_blank" rel="noopener">LinkedIn</a></dd></div>
+        </dl>
+        <hr class="rule" style="margin: var(--space-6) 0 var(--space-5);" />
+        <p class="meta" style="letter-spacing: 0.06em;">CORE SERVICES</p>
+        <div class="chip-row">
+          <span class="chip">Data engineering</span>
+          <span class="chip">Artificial intelligence</span>
+          <span class="chip">Cloud data platforms</span>
+          <span class="chip">Enterprise software</span>
+          <span class="chip">Data governance</span>
+          <span class="chip">Digital transformation</span>
+          <span class="chip">Healthcare &amp; life sciences</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3 · CAPABILITIES (layout 3, feature triplet) ──────────────────── -->
+  <section class="section" id="capabilities" data-od-id="capabilities">
+    <div class="container stack" style="gap: clamp(40px, 6vw, 72px);">
+      <div class="row-between" style="align-items: end; gap: 40px;">
+        <div style="flex: 1 1 auto;">
+          <p class="eyebrow">Practice areas</p>
+          <h2 class="h2" data-od-id="capabilities-title" style="max-width: none;">Three areas of work. One accountable engineer.</h2>
+          <p class="body-muted" style="max-width: 62ch; margin-top: var(--space-5);">From the first source system to the model in production, DataWeGo covers the complete data lifecycle under one accountable engagement.</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature card" data-od-id="capability-card-platform">
+          <div class="feature-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6"/><path d="M5 11.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6"/></svg>
+          </div>
+          <h3 class="h3">Data platforms</h3>
+          <p>Modern lakehouse and warehouse architectures that unify clinical, operational and product data — modelled for analysts and for machines, not just dashboards.</p>
+          <ul>
+            <li>Ingestion, integration &amp; orchestration</li>
+            <li>Medallion modelling and semantic layers</li>
+            <li>Batch, streaming and CDC pipelines</li>
+          </ul>
+        </div>
+
+        <div class="feature card" data-od-id="capability-card-ai">
+          <div class="feature-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
+          </div>
+          <h3 class="h3">AI-powered solutions</h3>
+          <p>Prediction, classification and generative assistants built on governed data — with evaluation, monitoring and human review designed in from day one.</p>
+          <ul>
+            <li>Machine learning &amp; forecasting</li>
+            <li>Retrieval-grounded copilots and automation</li>
+            <li>Model lifecycle, drift and cost monitoring</li>
+          </ul>
+        </div>
+
+        <div class="feature card" data-od-id="capability-card-cloud">
+          <div class="feature-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 6.6 9.2A3.9 3.9 0 0 0 7 18Z"/><path d="M12 12v5M9.5 14.5 12 12l2.5 2.5"/></svg>
+          </div>
+          <h3 class="h3">Cloud &amp; enterprise software</h3>
+          <p>Cloud-native architectures, APIs and integration layers that connect platforms to the systems your organisation already depends on.</p>
+          <ul>
+            <li>Well-architected landing zones &amp; IaC</li>
+            <li>HL7 FHIR, OMOP and custom API development</li>
+            <li>Cost, performance and reliability engineering</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4 · DATA LIFECYCLE (page-surface band, pipeline flourish) ──────── -->
+  <section class="section" id="lifecycle" data-od-id="lifecycle" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+    <div class="container stack" style="gap: clamp(36px, 5vw, 64px);">
+      <div class="row-between" style="align-items: end; gap: 40px;">
+        <div style="flex: 1 1 auto;">
+          <p class="eyebrow">The complete data lifecycle</p>
+          <h2 class="h2" data-od-id="lifecycle-title">Six stages. One continuous line of custody.</h2>
+        </div>
+        <a class="btn btn-secondary btn-sm" href="#architecture">See a reference platform</a>
+      </div>
+
+      <div class="flow" data-od-id="lifecycle-flow">
+        <div class="flow-step" data-od-id="lifecycle-step-ingest">
+          <span class="num meta">01</span>
+          <h3 style="font-size: var(--text-lg);">Ingest</h3>
+          <p>Source systems, streams, files and clinical feeds land in a governed entry zone with lineage from the first byte.</p>
+        </div>
+        <div class="flow-step" data-od-id="lifecycle-step-integrate">
+          <span class="num meta">02</span>
+          <h3 style="font-size: var(--text-lg);">Integrate</h3>
+          <p>Schema reconciliation, deduplication and identity resolution turn fragments into one reliable record.</p>
+        </div>
+        <div class="flow-step" data-od-id="lifecycle-step-model">
+          <span class="num meta">03</span>
+          <h3 style="font-size: var(--text-lg);">Model</h3>
+          <p>Layered modelling and tested transformations give analysts and models the same agreed definitions.</p>
+        </div>
+        <div class="flow-step" data-od-id="lifecycle-step-analyze">
+          <span class="num meta">04</span>
+          <h3 style="font-size: var(--text-lg);">Analyze</h3>
+          <p>Self-service analytics, BI and exploration sit on the governed semantic layer, not on exports.</p>
+        </div>
+        <div class="flow-step" data-od-id="lifecycle-step-govern">
+          <span class="num meta">05</span>
+          <h3 style="font-size: var(--text-lg);">Govern</h3>
+          <p>Access policy, quality checks, privacy controls and audit trails run as code across every stage.</p>
+        </div>
+        <div class="flow-step" data-od-id="lifecycle-step-operate">
+          <span class="num meta">06</span>
+          <h3 style="font-size: var(--text-lg);">Operate</h3>
+          <p>Models and pipelines deploy to scalable cloud environments, then get monitored, priced and improved.</p>
+        </div>
+      </div>
+
+      <p class="lead" style="max-width: 74ch; margin: 0;">Technology should not only be innovative — it should create real-world value. That belief shapes how DataWeGo scopes, builds and hands over every platform.</p>
+    </div>
+  </section>
+
+  <!-- ── 5 · REFERENCE ARCHITECTURE (custom split) ─────────────────────── -->
+  <section class="section" id="architecture" data-od-id="architecture">
+    <div class="container grid-1-2">
+      <div class="stack" style="grid-column: 1 / -1; gap: var(--space-6);">
+        <p class="eyebrow">Reference architecture</p>
+        <h2 class="h2" data-od-id="architecture-title" style="max-width: none; font-size: clamp(28px, 3.3vw, 40px);">A pattern we can defend in an audit and in a boardroom.</h2>
+      </div>
+
+      <div class="stack" style="gap: var(--space-6);">
+        <p class="body-muted">Every engagement starts from a proven topology and is adapted to your data, your regulators and your cloud. The bands below are the ones we expect to justify to a security reviewer and to a CFO.</p>
+        <p class="meta" style="letter-spacing: 0.06em;">SCHEMATIC · NOT A BILL OF MATERIALS</p>
+      </div>
+
+      <div class="arch" data-od-id="architecture-diagram">
+        <div class="arch-band" data-od-id="arch-band-sources">
+          <span class="meta">SOURCES</span>
+          <div class="arch-nodes">
+            <span class="arch-node">EHR &amp; clinical systems</span>
+            <span class="arch-node">Laboratory feeds</span>
+            <span class="arch-node">ERP &amp; CRM</span>
+            <span class="arch-node">Event streams</span>
+            <span class="arch-node">Documents</span>
+          </div>
+        </div>
+        <div class="arch-band" data-od-id="arch-band-ingress">
+          <span class="meta">INGRESS</span>
+          <div class="arch-nodes">
+            <span class="arch-node">Batch loaders</span>
+            <span class="arch-node">CDC &amp; change capture</span>
+            <span class="arch-node">HL7 FHIR endpoints</span>
+            <span class="arch-node">SFTP &amp; partner drops</span>
+          </div>
+        </div>
+        <div class="arch-band" data-od-id="arch-band-platform">
+          <span class="meta">PLATFORM</span>
+          <div class="arch-nodes">
+            <span class="arch-node is-key">Lakehouse storage</span>
+            <span class="arch-node">Transformation &amp; orchestration</span>
+            <span class="arch-node">Feature store</span>
+            <span class="arch-node">Semantic layer</span>
+          </div>
+        </div>
+        <div class="arch-band" data-od-id="arch-band-intelligence">
+          <span class="meta">INTELLIGENCE</span>
+          <div class="arch-nodes">
+            <span class="arch-node is-key">ML training &amp; registry</span>
+            <span class="arch-node">Retrieval-grounded assistants</span>
+            <span class="arch-node">Forecasting</span>
+            <span class="arch-node">Process automation</span>
+          </div>
+        </div>
+        <div class="arch-band" data-od-id="arch-band-consumption">
+          <span class="meta">CONSUMPTION</span>
+          <div class="arch-nodes">
+            <span class="arch-node">Dashboards</span>
+            <span class="arch-node">Operational APIs</span>
+            <span class="arch-node">Embedded analytics</span>
+            <span class="arch-node">Notebook workspaces</span>
+          </div>
+        </div>
+        <div class="arch-band" data-od-id="arch-band-control">
+          <span class="meta">CONTROL PLANE</span>
+          <div class="arch-nodes">
+            <span class="arch-node">Governance &amp; access policy</span>
+            <span class="arch-node">Data quality</span>
+            <span class="arch-node">Lineage &amp; audit</span>
+            <span class="arch-node">Observability</span>
+            <span class="arch-node">Cost controls</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6 · INDUSTRIES (cards) ────────────────────────────────────────── -->
+  <section class="section" id="industries" data-od-id="industries" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+    <div class="container stack" style="gap: clamp(36px, 5vw, 64px);">
+      <div style="max-width: none;">
+        <p class="eyebrow">Where we work</p>
+        <h2 class="h2" data-od-id="industries-title" style="font-size: clamp(27px, 2.9vw, 36px);">Sector depth is the difference between a demo and a deployment.</h2>
+      </div>
+
+      <div class="grid-2">
+        <article class="card" data-od-id="industry-card-healthcare">
+          <p class="meta" style="letter-spacing: 0.08em;">HEALTHCARE &amp; LIFE SCIENCES</p>
+          <h3 class="h3" style="margin-top: var(--space-4);">Clinical and research data that holds up under scrutiny</h3>
+          <p class="body-muted" style="margin-top: var(--space-4);">Interoperability work that has to survive a privacy review: patient records harmonised across systems, study data prepared for analysis, and models that stay explainable to clinicians.</p>
+          <ul style="margin: var(--space-6) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+            <li class="body-muted" style="font-size: var(--text-sm);">— HL7 FHIR interoperability and record linkage</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— OMOP-style analytic data models for research cohorts</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— Privacy-preserving pipelines, consent and access boundaries</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— Decision support and workflow automation for care teams</li>
+          </ul>
+        </article>
+
+        <article class="card" data-od-id="industry-card-enterprise">
+          <p class="meta" style="letter-spacing: 0.08em;">ENTERPRISE INNOVATION</p>
+          <h3 class="h3" style="margin-top: var(--space-4);">One version of the truth across the operating business</h3>
+          <p class="body-muted" style="margin-top: var(--space-4);">Organisations that have outgrown spreadsheets and one-off reports. We consolidate the estate, then put analytics and AI where the decisions are actually made.</p>
+          <ul style="margin: var(--space-6) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+            <li class="body-muted" style="font-size: var(--text-sm);">— Cloud migration and modernisation of legacy warehouses</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— Business intelligence and governed self-service analytics</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— AI automation of document and back-office processes</li>
+            <li class="body-muted" style="font-size: var(--text-sm);">— Data governance operating models that outlast the project</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7 · APPROACH (layout 7, log list as an ordered method) ────────── -->
+  <section class="section" id="approach" data-od-id="approach">
+    <div class="container">
+      <div class="row-between" style="margin-bottom: clamp(28px, 4vw, 48px); align-items: end; gap: 32px;">
+        <div style="flex: 1 1 auto;">
+          <p class="eyebrow">How an engagement runs</p>
+          <h2 class="h2" data-od-id="approach-title">Four phases, no mystery handover.</h2>
+        </div>
+        <a class="btn btn-quiet btn-arrow" href="#contact">Scope a phase with us</a>
+      </div>
+
+      <div>
+        <article class="step-row" data-od-id="approach-step-discover">
+          <span class="num meta">01</span>
+          <div>
+            <h3 class="h3" style="font-size: var(--text-lg);">Discover &amp; assess</h3>
+            <p>We map sources, systems, constraints and the decisions the data must serve — and agree what measurable impact looks like before anything is built.</p>
+          </div>
+          <span class="pull meta">Assessment</span>
+        </article>
+
+        <article class="step-row" data-od-id="approach-step-architect">
+          <span class="num meta">02</span>
+          <div>
+            <h3 class="h3" style="font-size: var(--text-lg);">Architect &amp; agree</h3>
+            <p>A target platform design, a governance model and a phased roadmap your security, legal and finance reviewers can sign off on.</p>
+          </div>
+          <span class="pull meta">Design deliverable</span>
+        </article>
+
+        <article class="step-row" data-od-id="approach-step-build">
+          <span class="num meta">03</span>
+          <div>
+            <h3 class="h3" style="font-size: var(--text-lg);">Build &amp; prove</h3>
+            <p>Working slices delivered in short cycles — one data domain, one pipeline, one model, each with tests, lineage and monitoring attached.</p>
+          </div>
+          <span class="pull meta">Iterative</span>
+        </article>
+
+        <article class="step-row" data-od-id="approach-step-operate">
+          <span class="num meta">04</span>
+          <div>
+            <h3 class="h3" style="font-size: var(--text-lg);">Operate &amp; transfer</h3>
+            <p>We run it alongside your team, document it as code, then hand over — or stay on as the platform engineering function you need.</p>
+          </div>
+          <span class="pull meta">Continuous</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8 · PRINCIPLES (layout 8, comparison table) ───────────────────── -->
+  <section class="section" id="principles" data-od-id="principles" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+    <div class="container">
+      <div style="margin-bottom: clamp(32px, 5vw, 56px);">
+        <p class="eyebrow">Why DataWeGo</p>
+        <h2 class="h2" data-od-id="principles-title" style="max-width: none; font-size: clamp(28px, 3.3vw, 40px);">Five commitments, and what each one obliges us to do.</h2>
+      </div>
+
+      <table class="ds-table">
+        <thead>
+          <tr>
+            <th scope="col">Principle</th>
+            <th scope="col">What it obliges us to do</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-od-id="principle-row-trusted">
+            <td class="t-name">Trusted engineering</td>
+            <td class="t-desc">Code review, tests, documented pipelines and reproducible environments. You get an asset you own, not a dependency on us.</td>
+          </tr>
+          <tr data-od-id="principle-row-purpose">
+            <td class="t-name">AI with purpose</td>
+            <td class="t-desc">A model ships only against a decision someone makes, with a baseline to beat and a human review path when it is wrong.</td>
+          </tr>
+          <tr data-od-id="principle-row-secure">
+            <td class="t-name">Secure by design</td>
+            <td class="t-desc">Least-privilege access, encryption, privacy controls and audit trails specified in the architecture — not retrofitted before go-live.</td>
+          </tr>
+          <tr data-od-id="principle-row-scale">
+            <td class="t-name">Enterprise scale</td>
+            <td class="t-desc">Cloud-native, horizontally scalable designs with cost and performance budgets set at the start and tracked continuously.</td>
+          </tr>
+          <tr data-od-id="principle-row-business">
+            <td class="t-name">Business-focused innovation</td>
+            <td class="t-desc">Every technical choice is traceable to a measurable outcome: faster decisions, lower operating cost, or new capability.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── 9 · CONTACT (layout 6, closing ask) ───────────────────────────── -->
+  <section class="section" id="contact" data-od-id="contact">
+    <div class="container grid-2" style="align-items: start; gap: clamp(40px, 6vw, 80px);">
+      <div class="stack" style="grid-column: 1 / -1; gap: var(--space-6);">
+        <p class="eyebrow">Start a conversation</p>
+        <h2 class="h2" data-od-id="contact-title" style="max-width: none;">Bring one hard data problem. Leave with a plan.</h2>
+      </div>
+      <div class="stack" style="gap: var(--space-6);">
+        <p class="lead">Tell us the systems involved and the decision you are trying to improve. We reply with a point of view, the nearest comparable build, and what a first phase would cost in time.</p>
+      </div>
+
+      <form class="card" id="brief-form" novalidate data-od-id="contact-form" aria-label="Project enquiry">
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-name">Name</label>
+            <input class="input" id="f-name" name="name" type="text" autocomplete="name" placeholder="Your name" required />
+            <span class="field-error" data-error-for="f-name"></span>
+          </div>
+          <div class="field">
+            <label for="f-email">Work email</label>
+            <input class="input" id="f-email" name="email" type="email" autocomplete="email" placeholder="you@organisation.com" required />
+            <span class="field-error" data-error-for="f-email"></span>
+          </div>
+          <div class="field">
+            <label for="f-org">Organisation</label>
+            <input class="input" id="f-org" name="org" type="text" autocomplete="organization" placeholder="Company or institution" />
+            <span class="field-error" data-error-for="f-org"></span>
+          </div>
+          <div class="field">
+            <label for="f-need">What you need</label>
+            <select class="select" id="f-need" name="need">
+              <option value="Data platform">Data platform</option>
+              <option value="AI-powered solution">AI-powered solution</option>
+              <option value="Cloud &amp; architecture">Cloud &amp; architecture</option>
+              <option value="Data governance">Data governance</option>
+              <option value="Healthcare / life sciences">Healthcare / life sciences</option>
+              <option value="Something else">Something else</option>
+            </select>
+            <span class="field-error" data-error-for="f-need"></span>
+          </div>
+          <div class="field full">
+            <label for="f-msg">The decision this data should improve</label>
+            <textarea class="textarea" id="f-msg" name="message" placeholder="Two or three sentences are enough to start." required></textarea>
+            <span class="field-error" data-error-for="f-msg"></span>
+          </div>
+        </div>
+
+        <div class="row-between" style="margin-top: var(--space-6); gap: var(--space-4);">
+          <p class="meta" style="max-width: 30ch; line-height: 1.5;">Prototype · composes a brief locally, no backend is connected.</p>
+          <button class="btn btn-primary" type="submit" data-od-id="contact-submit">Prepare my brief</button>
+        </div>
+
+        <div id="brief-out" hidden aria-live="polite">
+          <p class="notice" role="status" id="brief-status">Brief composed. Review it below before sending.</p>
+          <div class="summary" aria-live="polite">
+            <dl>
+              <dt>From</dt><dd id="out-from">—</dd>
+              <dt>Organisation</dt><dd id="out-org">—</dd>
+              <dt>Need</dt><dd id="out-need">—</dd>
+              <dt>Problem</dt><dd id="out-msg">—</dd>
+            </dl>
+          </div>
+          <div class="row" style="gap: var(--space-3); flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" type="button" id="brief-mail" data-od-id="contact-mail">Open in mail client</button>
+            <button class="btn btn-quiet btn-sm" type="button" id="brief-edit" data-od-id="contact-edit">Edit answers</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pagefoot" data-od-id="footer">
+  <div class="container">
+    <div class="foot-grid">
+      <div class="stack" style="gap: var(--space-4);">
+        <img
+          src="resources/DataWeGo_Logo.png"
+          alt="DataWeGo"
+          data-od-id="footer-logo"
+          loading="lazy"
+          decoding="async"
+          style="width: auto; height: auto; max-width: 105px; max-height: 70px; align-self: flex-start; object-fit: contain;"
+        />
+        <p style="max-width: 34ch; margin: 0;">Building AI-powered data platforms for healthcare, life sciences and enterprise innovation.</p>
+        <p class="meta" style="letter-spacing: 0.04em;">DEN HAAG · NETHERLANDS</p>
+      </div>
+      <div>
+        <h4>Services</h4>
+        <ul>
+          <li><a href="#capabilities">Data engineering</a></li>
+          <li><a href="#capabilities">Artificial intelligence</a></li>
+          <li><a href="#lifecycle">Cloud data platforms</a></li>
+          <li><a href="#capabilities">Enterprise software</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Expertise</h4>
+        <ul>
+          <li><a href="#architecture">Data integration</a></li>
+          <li><a href="#lifecycle">Data governance</a></li>
+          <li><a href="#industries">Healthcare &amp; life sciences</a></li>
+          <li><a href="#industries">Digital transformation</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#about">Company profile</a></li>
+          <li><a href="#approach">How we work</a></li>
+          <li><a href="#principles">Principles</a></li>
+          <li><a href="https://www.linkedin.com/company/datawego" target="_blank" rel="noopener">LinkedIn</a></li>
+          <li><a href="https://www.datawego.nl" target="_blank" rel="noopener">datawego.nl</a></li>
+        </ul>
+      </div>
+      <div data-od-id="footer-contact">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:info@datawego.nl">info@datawego.nl</a></li>
+        </ul>
+        <p style="margin: var(--space-4) 0 0; font-style: normal;">Spieringdam 1<br />2492 ND Den Haag<br />The Netherlands</p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span class="num">2026</span> DataWeGo · Data infrastructure &amp; analytics</span>
+      <span class="meta">TURNING DATA INTO DECISIONS</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── language ──────────────────────────────────────────────────────────
+     English is the authored markup. Dutch is applied at runtime by swapping
+     text nodes and a small set of attributes through the dictionary below, so
+     the page keeps ONE copy of the content and both languages stay in sync.
+     The choice is remembered in localStorage["datawego-lang"] and resolved in
+     the head before first paint; a Dutch browser locale is the default.     */
+  var LANG_KEY = "datawego-lang";
+  var lang = document.documentElement.getAttribute("data-lang") === "nl" ? "nl" : "en";
+  var statusEN = "";
+
+  var NL = {
+    /* nav + chrome */
+    "DataWeGo home": "Startpagina van DataWeGo",
+    "Primary": "Primaire navigatie",
+    "Language": "Taal",
+    "Company": "Bedrijf",
+    "Capabilities": "Wat we doen",
+    "Industries": "Sectoren",
+    "Approach": "Aanpak",
+    "Talk to an engineer": "Praat met een engineer",
+    "Switch to dark theme": "Wissel naar donkere modus",
+    "Switch to light theme": "Wissel naar lichte modus",
+
+    /* hero */
+    "DataWeGo brand banner": "DataWeGo merkbanner",
+    "data infrastructure & analytics": "data-infrastructuur & analytics",
+    "DataWeGo · Den Haag, Netherlands": "DataWeGo · Den Haag, Nederland",
+    "Turning data into decisions. Turning AI into business value.":
+      "Van data naar beslissingen. Van AI naar bedrijfswaarde.",
+    "A data engineering and AI consulting company building AI-powered data platforms for healthcare, life sciences and enterprise innovation.":
+      "Een data-engineering- en AI-adviesbureau dat AI-aangedreven dataplatforms bouwt voor de zorg, life sciences en enterprise-innovatie.",
+    "Book an architecture review": "Plan een architectuurreview",
+    "See how we work end to end": "Zie hoe wij end-to-end werken",
+    "Data infrastructure & analytics": "Data-infrastructuur & analytics",
+    "Cloud-native": "Cloud-natief",
+    "Secure by design": "Veilig by design",
+
+    /* company profile */
+    "Who we are": "Wie we zijn",
+    "Independent on purpose:": "Bewust onafhankelijk:",
+    "you work with the person who builds it.": "je werkt samen met de persoon die het bouwt.",
+    "DataWeGo is a Dutch data engineering and AI consulting company. We turn complex operational, clinical and research data into platforms people trust — and into models that change what an organisation does next.":
+      "DataWeGo is een Nederlands data-engineering- en AI-adviesbureau. Wij zetten complexe operationele, klinische en onderzoeksdata om in platforms waarop mensen vertrouwen — en in modellen die bepalen wat een organisatie als volgende doet.",
+    "The architect who scopes an engagement is the engineer who ships it. No account layer between you and the build, no rotation mid-project, and documentation written so your team can run the platform without us.":
+      "De architect die een opdracht scopeert, is de engineer die het oplevert. Geen accountlaag tussen jou en de bouw, geen wisseling halverwege het project, en documentatie waarmee jouw team het platform zonder ons kan draaien.",
+    "Our work covers the complete data lifecycle: ingestion and integration, modelling and analytics, machine learning and automation, governance, and scalable cloud deployment.":
+      "Ons werk dekt de volledige datalifecycle: inname en integratie, modellering en analytics, machine learning en automatisering, governance en schaalbare cloudimplementatie.",
+    "Industry": "Sector",
+    "Headquarters": "Hoofdkwartier",
+    "Den Haag, Zuid-Holland — Netherlands": "Den Haag, Zuid-Holland — Nederland",
+    "h3|Model": "Modelleren",
+    "Independent specialist consultancy": "Onafhankelijke specialistische consultancy",
+    "Sectors": "Sectoren",
+    "Healthcare, life sciences, enterprise innovation": "Zorg, life sciences, enterprise-innovatie",
+    "CORE SERVICES": "KERNDIENSTEN",
+    "Data engineering": "Data-engineering",
+    "Artificial intelligence": "Kunstmatige intelligentie",
+    "Cloud data platforms": "Clouddataplatforms",
+    "Enterprise software": "Enterprise-software",
+    "Data governance": "Datagovernance",
+    "Digital transformation": "Digitale transformatie",
+    "Healthcare & life sciences": "Zorg & life sciences",
+
+    /* capabilities */
+    "Practice areas": "Werkvelden",
+    "Three areas of work. One accountable engineer.": "Drie werkvelden. Eén verantwoordelijke engineer.",
+    "From the first source system to the model in production, DataWeGo covers the complete data lifecycle under one accountable engagement.":
+      "Van het eerste bronsysteem tot het model in productie: DataWeGo dekt de volledige datalifecycle binnen één opdracht met één verantwoordelijke.",
+    "Data platforms": "Dataplatforms",
+    "Modern lakehouse and warehouse architectures that unify clinical, operational and product data — modelled for analysts and for machines, not just dashboards.":
+      "Moderne lakehouse- en warehouse-architecturen die klinische, operationele en productdata samenvoegen — gemodelleerd voor analysts én voor machines, niet alleen voor dashboards.",
+    "Ingestion, integration & orchestration": "Inname, integratie & orkestratie",
+    "Medallion modelling and semantic layers": "Medallion-modellering en semantische lagen",
+    "Batch, streaming and CDC pipelines": "Batch-, streaming- en CDC-pipelines",
+    "AI-powered solutions": "AI-oplossingen",
+    "Prediction, classification and generative assistants built on governed data — with evaluation, monitoring and human review designed in from day one.":
+      "Voorspelling, classificatie en generatieve assistants op governed data — met evaluation, monitoring en menselijke toets vanaf dag één ingebouwd.",
+    "Machine learning & forecasting": "Machine learning & voorspellingen",
+    "Retrieval-grounded copilots and automation": "Retrieval-gebaseerde copilots en automatisering",
+    "Model lifecycle, drift and cost monitoring": "Modellifecycle, drift- en kostmonitoring",
+    "Cloud & enterprise software": "Cloud- & enterprise-software",
+    "Cloud-native architectures, APIs and integration layers that connect platforms to the systems your organisation already depends on.":
+      "Cloud-natieve architecturen, API's en integratielagen die platforms aansluiten op de systemen waar jouw organisatie nu al op leunt.",
+    "Well-architected landing zones & IaC": "Well-architected landingzones & IaC",
+    "HL7 FHIR, OMOP and custom API development": "HL7 FHIR, OMOP en API-ontwikkeling op maat",
+    "Cost, performance and reliability engineering": "Engineering voor kosten, prestaties en betrouwbaarheid",
+
+    /* data lifecycle */
+    "The complete data lifecycle": "De volledige datalifecycle",
+    "Six stages. One continuous line of custody.": "Zes stappen. Eén onafgebroken verantwoordingslijn.",
+    "See a reference platform": "Bekijk een referentieplatform",
+    "Ingest": "Ophalen",
+    "Source systems, streams, files and clinical feeds land in a governed entry zone with lineage from the first byte.":
+      "Bronsystemen, streams, bestanden en klinische feeds komen binnen in een governed instapzone, met herkomstregistratie vanaf het eerste byte.",
+    "Integrate": "Integreren",
+    "Schema reconciliation, deduplication and identity resolution turn fragments into one reliable record.":
+      "Schema-afstemming, ontdubbelen en identity resolution maken van alle fragmenten één betrouwbaar record.",
+    "Layered modelling and tested transformations give analysts and models the same agreed definitions.":
+      "Gelaagde modellering en geteste transformations geven analysts en modellen dezelfde afgesproken definities.",
+    "Analyze": "Analyseren",
+    "Self-service analytics, BI and exploration sit on the governed semantic layer, not on exports.":
+      "Self-service analytics, BI en exploratie leunen op de governed semantische laag, niet op exports.",
+    "Govern": "Governen",
+    "Access policy, quality checks, privacy controls and audit trails run as code across every stage.":
+      "Toegangsbeleid, kwaliteitschecks, privacycontroles en audit trails draaien als code in elke stap.",
+    "Operate": "Beheren",
+    "Models and pipelines deploy to scalable cloud environments, then get monitored, priced and improved.":
+      "Modellen en pipelines worden uitgerold naar schaalbare cloudomgevingen en daarna gemonitord, geprijsd en verbeterd.",
+    "Technology should not only be innovative — it should create real-world value. That belief shapes how DataWeGo scopes, builds and hands over every platform.":
+      "Technologie hoeft niet alleen vernieuwend te zijn — ze moet ook waarde in de echte wereld toevoegen. Dat uitgangspunt bepaalt hoe DataWeGo elke opdracht scopeert, bouwt en overdraagt.",
+
+    /* reference architecture */
+    "Reference architecture": "Referentiearchitectuur",
+    "A pattern we can defend in an audit and in a boardroom.": "Een patroon dat we kunnen verdedigen in een audit én in de raadkamer.",
+    "Every engagement starts from a proven topology and is adapted to your data, your regulators and your cloud. The bands below are the ones we expect to justify to a security reviewer and to a CFO.":
+      "Elke opdracht start vanuit een bewezen topologie en wordt aangepast aan jouw data, je toezichthouders en je cloud. De lagen hieronder zijn die we moeten kunnen verantwoorden aan een security reviewer en aan een CFO.",
+    "SCHEMATIC · NOT A BILL OF MATERIALS": "SCHEMATISCH · GEEN STUKLIJST",
+    "SOURCES": "BRONNEN",
+    "EHR & clinical systems": "EHR & klinische systemen",
+    "Laboratory feeds": "Laboratoriumfeeds",
+    "Event streams": "Gebeurtenisstreams",
+    "Documents": "Documenten",
+    "INGRESS": "INNAME",
+    "Batch loaders": "Batch-loaders",
+    "HL7 FHIR endpoints": "HL7 FHIR-endpoints",
+    "SFTP & partner drops": "SFTP & partnerdrops",
+    "Lakehouse storage": "Lakehouse-opslag",
+    "Transformation & orchestration": "Transformatie & orkestratie",
+    "Semantic layer": "Semantische laag",
+    "INTELLIGENCE": "INTELLIGENTIE",
+    "ML training & registry": "ML-training & registry",
+    "Retrieval-grounded assistants": "Retrieval-gebaseerde assistants",
+    "Forecasting": "Voorspellingen",
+    "Process automation": "Procesautomatisering",
+    "CONSUMPTION": "GEBRUIK",
+    "Operational APIs": "Operationele API's",
+    "Notebook workspaces": "Notebook-werkomgevingen",
+    "Governance & access policy": "Governance & toegangsbeleid",
+    "Data quality": "Datakwaliteit",
+    "Lineage & audit": "Herkomst & audit",
+    "Cost controls": "Kostentozicht",
+
+    /* industries */
+    "Where we work": "Waar we werken",
+    "Sector depth is the difference between a demo and a deployment.": "Sectorkennis is het verschil tussen een demo en een live-omgeving.",
+    "HEALTHCARE & LIFE SCIENCES": "ZORG & LIFE SCIENCES",
+    "Clinical and research data that holds up under scrutiny": "Klinische en onderzoeksdata die een kritische blik doorstaat",
+    "Interoperability work that has to survive a privacy review: patient records harmonised across systems, study data prepared for analysis, and models that stay explainable to clinicians.":
+      "Interoperabiliteit die een privacytoets moet doorstaan: patiëntrecords geharmoniseerd over systemen, onderzoeksdata klaargezet voor analyse en modellen die voor artsen uitlegbaar blijven.",
+    "— HL7 FHIR interoperability and record linkage": "— HL7 FHIR-interoperabiliteit en records aan elkaar koppelen",
+    "— OMOP-style analytic data models for research cohorts": "— Analytische datamodellen in OMOP-stijl voor onderzoekscohorten",
+    "— Privacy-preserving pipelines, consent and access boundaries": "— Privacybehoudende pipelines, toestemming en toegangsgrenzen",
+    "— Decision support and workflow automation for care teams": "— Beslisondersteuning en workflow-automatisering voor zorgteams",
+    "ENTERPRISE INNOVATION": "ENTERPRISE-INNOVATIE",
+    "One version of the truth across the operating business": "Eén versie van de waarheid in de hele organisatie",
+    "Organisations that have outgrown spreadsheets and one-off reports. We consolidate the estate, then put analytics and AI where the decisions are actually made.":
+      "Organisaties die spreadsheets en losse rapportages ontgroeid zijn. Wij consolideren het datalandschap en zetten analytics en AI neer waar de beslissingen echt genomen worden.",
+    "— Cloud migration and modernisation of legacy warehouses": "— Cloudmigratie en modernisering van legacy warehouses",
+    "— Business intelligence and governed self-service analytics": "— Business intelligence en governed self-service analytics",
+    "— AI automation of document and back-office processes": "— AI-automatisering van document- en back-officeprocessen",
+    "— Data governance operating models that outlast the project": "— Governancemodellen die het project overstijgen",
+
+    /* approach */
+    "How an engagement runs": "Zo loopt een opdracht",
+    "Four phases, no mystery handover.": "Vier fasen, geen mysterieuze overdracht.",
+    "Scope a phase with us": "Verken een fase met ons",
+    "Discover & assess": "Ontdek & beoordeel",
+    "We map sources, systems, constraints and the decisions the data must serve — and agree what measurable impact looks like before anything is built.":
+      "We brengen bronnen, systemen, randvoorwaarden en de beslissingen die de data moet dienen in kaart — en spreken af wat meetbare impact is voordat er iets gebouwd wordt.",
+    "Assessment": "Nulmeting",
+    "Architect & agree": "Ontwerp & akkoord",
+    "A target platform design, a governance model and a phased roadmap your security, legal and finance reviewers can sign off on.":
+      "Een ontwerp voor het doelplatform, een governancemodel en een gefaseerd roadmap waar je security-, juridische en finance-reviewers op kunnen tekenen.",
+    "Design deliverable": "Ontwerpoplevering",
+    "Build & prove": "Bouw & bewijs",
+    "Working slices delivered in short cycles — one data domain, one pipeline, one model, each with tests, lineage and monitoring attached.":
+      "Werkende slices in korte cycli — één domein, één pipeline, één model, steeds met tests, herkomstregistratie en monitoring.",
+    "Iterative": "Iteratief",
+    "Operate & transfer": "Beheer & overdracht",
+    "We run it alongside your team, document it as code, then hand over — or stay on as the platform engineering function you need.":
+      "We draaien het samen met jouw team, documenteren het als code en dragen het over — of blijven als de platform-engineeringfunctie die je nodig hebt.",
+    "Continuous": "Continue",
+
+    /* principles */
+    "Why DataWeGo": "Waarom DataWeGo",
+    "Five commitments, and what each one obliges us to do.": "Vijf toezeggingen, en wat elk van ons vraagt.",
+    "Principle": "Principe",
+    "What it obliges us to do": "Wat het van ons vraagt",
+    "Trusted engineering": "Betrouwbare engineering",
+    "Code review, tests, documented pipelines and reproducible environments. You get an asset you own, not a dependency on us.":
+      "Code review, tests, gedocumenteerde pipelines en reproduceerbare omgevingen. Je krijgt een bezit dat van jou is, geen afhankelijkheid van ons.",
+    "AI with purpose": "AI met doel",
+    "A model ships only against a decision someone makes, with a baseline to beat and a human review path when it is wrong.":
+      "Een model gaat pas live als het een beslissing ondersteunt, met een baseline die verslagen moet worden en een menselijke toets als het misgaat.",
+    "Least-privilege access, encryption, privacy controls and audit trails specified in the architecture — not retrofitted before go-live.":
+      "Least-privilege-toegang, encryptie, privacycontroles en audit trails gespecificeerd in de architectuur — niet achteraf toegevoegd voor de livegang.",
+    "Enterprise scale": "Schaalbaar voor enterprise",
+    "Cloud-native, horizontally scalable designs with cost and performance budgets set at the start and tracked continuously.":
+      "Cloud-natieve, horizontaal schaalbare ontwerpen met kosten- en prestatiebudgetten die vooraf zijn vastgesteld en continu worden gevolgd.",
+    "Business-focused innovation": "Businessgerichte innovatie",
+    "Every technical choice is traceable to a measurable outcome: faster decisions, lower operating cost, or new capability.":
+      "Elke technische keuze is te herleiden naar een meetbaar resultaat: snellere beslissingen, lagere operationele kosten of nieuwe mogelijkheden.",
+
+    /* contact */
+    "Start a conversation": "Start een gesprek",
+    "Bring one hard data problem. Leave with a plan.": "Neem één moeilijk data-vraagstuk mee. Ga naar huis met een plan.",
+    "Tell us the systems involved and the decision you are trying to improve. We reply with a point of view, the nearest comparable build, and what a first phase would cost in time.":
+      "Vertel welke systemen betrokken zijn en welke beslissing je wilt verbeteren. We reageren met een visie, de meest vergelijkbare eerdere build en wat een eerste fase aan tijd kost.",
+    "Project enquiry": "Projectaanvraag",
+    "Name": "Naam",
+    "Your name": "Je naam",
+    "Work email": "Zakelijk e-mailadres",
+    "you@organisation.com": "jij@organisatie.nl",
+    "Organisation": "Organisatie",
+    "Company or institution": "Bedrijf of instelling",
+    "What you need": "Waar je behoefte aan hebt",
+    "Data platform": "Dataplatform",
+    "AI-powered solution": "AI-oplossing",
+    "Cloud & architecture": "Cloud & architectuur",
+    "Healthcare / life sciences": "Zorg / life sciences",
+    "Something else": "Iets anders",
+    "The decision this data should improve": "De beslissing die deze data moet verbeteren",
+    "Two or three sentences are enough to start.": "Twee of drie zinnen zijn genoeg om te beginnen.",
+    "Prototype · composes a brief locally, no backend is connected.": "Prototype · stelt de aanvraag lokaal samen; er is geen backend gekoppeld.",
+    "Prepare my brief": "Stel mijn aanvraag op",
+    "Brief composed. Review it below before sending.": "Aanvraag samengesteld. Bekijk hem hieronder voordat je verstuurt.",
+    "From": "Van",
+    "Need": "Vraag",
+    "Problem": "Vraagstuk",
+    "Open in mail client": "Openen in e-mailprogramma",
+    "Edit answers": "Antwoorden bewerken",
+    "Please tell us your name.": "Laat even je naam achter.",
+    "Enter a valid email address.": "Vul een geldig e-mailadres in.",
+    "A sentence or two about the problem, please.": "Geef in een of twee zinnen waar het over gaat.",
+    "Brief composed locally. Nothing was sent — review it, then use your mail client.":
+      "Aanvraag lokaal samengesteld. Er is niets verzonden — bekijk hem en verstuur via je e-mailprogramma.",
+    "Data enquiry —": "Data-vraag —",
+
+    /* footer */
+    "Building AI-powered data platforms for healthcare, life sciences and enterprise innovation.":
+      "Wij bouwen AI-aangedreven dataplatforms voor de zorg, life sciences en enterprise-innovatie.",
+    "DEN HAAG · NETHERLANDS": "DEN HAAG · NEDERLAND",
+    "Services": "Diensten",
+    "Data integration": "Data-integratie",
+    "Company profile": "Bedrijfsprofiel",
+    "How we work": "Zo werken we",
+    "Principles": "Principes",
+    "DataWeGo · Data infrastructure & analytics": "DataWeGo · data-infrastructuur & analytics",
+    "TURNING DATA INTO DECISIONS": "VAN DATA NAAR BESLISSINGEN",
+    "The Netherlands": "Nederland"
+  };
+
+  var PAGE = {
+    titleEn: document.title,
+    titleNl: "DataWeGo — AI-aangedreven dataplatforms voor zorg, life sciences & enterprise",
+    descEn: "",
+    descNl: "DataWeGo is een data-engineering- en AI-adviesbureau dat AI-aangedreven dataplatforms bouwt voor de zorg, life sciences en enterprise-innovatie."
+  };
+
+  function norm(s) { return s.replace(/\s+/g, " ").trim(); }
+
+  /* dictionary lookup: an optional "tag|text" key wins over the plain text key,
+     which lets one word mean two things (the dt "Model" vs the stage "Model") */
+  function lookup(host, s) {
+    var key = norm(s);
+    if (!key) return null;
+    if (host && NL.hasOwnProperty(host + "|" + key)) return NL[host + "|" + key];
+    return NL.hasOwnProperty(key) ? NL[key] : null;
+  }
+  function swap(host, src) {
+    if (lang !== "nl") return src;
+    var v = lookup(host, src);
+    if (v === null) return src;                      /* untranslated: keep the source, never guess */
+    return /^\s*/.exec(src)[0] + v + /\s*$/.exec(src)[0];
+  }
+  function L(s) { return swap(null, s); }
+
+  var textRecs = [], attrRecs = [];
+  (function collect() {
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        var p = n.parentNode;
+        if (!p || /^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA)$/i.test(p.nodeName)) return NodeFilter.FILTER_REJECT;
+        return /[a-z]/i.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    }, null);
+    while (walker.nextNode()) {
+      var t = walker.currentNode;
+      textRecs.push({ node: t, host: t.parentNode.nodeName.toLowerCase(), src: t.nodeValue });
+    }
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[alt], [placeholder], [aria-label], [title]"),
+      function (el) {
+        ["alt", "placeholder", "aria-label", "title"].forEach(function (name) {
+          var v = el.getAttribute(name);
+          if (v && /[a-z]/i.test(v)) attrRecs.push({ el: el, name: name, src: v });
+        });
+      }
+    );
+    var d = document.querySelector('meta[name="description"]');
+    if (d) PAGE.descEn = d.getAttribute("content") || "";
+  })();
+
+  function renderLang(next) {
+    lang = next === "nl" ? "nl" : "en";
+    document.documentElement.setAttribute("lang", lang);
+    document.documentElement.setAttribute("data-lang", lang);
+
+    textRecs.forEach(function (r) {
+      var want = swap(r.host, r.src);
+      if (r.node.nodeValue !== want) r.node.nodeValue = want;
+    });
+    attrRecs.forEach(function (r) {
+      var want = swap(null, r.src);
+      if (r.el.getAttribute(r.name) !== want) r.el.setAttribute(r.name, want);
+    });
+
+    document.title = lang === "nl" ? PAGE.titleNl : PAGE.titleEn;
+    var d = document.querySelector('meta[name="description"]');
+    if (d) d.setAttribute("content", lang === "nl" ? PAGE.descNl : PAGE.descEn);
+
+    Array.prototype.forEach.call(document.querySelectorAll(".lang-btn"), function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-lang-opt") === lang ? "true" : "false");
+    });
+
+    if (root) syncThemeButton();
+    var status = document.getElementById("brief-status");
+    if (status && statusEN) status.textContent = L(statusEN);
+    if (typeof compose === "function" && out && !out.hidden) compose();
+
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".lang-btn"), function (b) {
+    b.addEventListener("click", function () { renderLang(b.getAttribute("data-lang-opt")); });
+  });
+  if (lang === "nl") renderLang("nl");
+
+  /* ── theme switch — remembered choice; follows the system until then ── */
+  var root = document.documentElement;
+  var themeBtn = document.getElementById("theme-toggle");
+  var THEME_KEY = "datawego-theme";
+
+  function readChoice() { try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; } }
+
+  function syncThemeButton() {
+    if (!themeBtn) return;
+    var isDark = root.getAttribute("data-theme") === "dark";
+    var label = L(isDark ? "Switch to light theme" : "Switch to dark theme");
+    themeBtn.setAttribute("aria-pressed", isDark ? "true" : "false");
+    themeBtn.setAttribute("aria-label", label);
+    themeBtn.setAttribute("title", label);
+  }
+  syncThemeButton();
+
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      syncThemeButton();
+    });
+  }
+
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    var onSystemTheme = function (e) {
+      if (readChoice()) return;
+      root.setAttribute("data-theme", e.matches ? "dark" : "light");
+      syncThemeButton();
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onSystemTheme);
+    else if (mq.addListener) mq.addListener(onSystemTheme);
+  }
+
+  var nav = document.getElementById("topnav");
+  var links = Array.prototype.slice.call(document.querySelectorAll(".topnav nav a"));
+  var sections = links
+    .map(function (a) { return document.getElementById(a.getAttribute("data-nav")); })
+    .filter(Boolean);
+
+  function onScroll() {
+    if (nav) nav.classList.toggle("scrolled", window.scrollY > 8);
+    var probe = window.innerHeight * 0.34;
+    var current = null;
+    for (var i = 0; i < sections.length; i++) {
+      var r = sections[i].getBoundingClientRect();
+      if (r.top <= probe && r.bottom > probe) current = sections[i].id;
+    }
+    links.forEach(function (a) {
+      var key = a.getAttribute("data-nav");
+      if (key && key === current) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var toggle = document.getElementById("menu-toggle");
+  var primaryNav = document.getElementById("primary-nav");
+  function closeMenu() {
+    if (!toggle || !primaryNav) return;
+    primaryNav.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+  if (toggle && primaryNav) {
+    toggle.addEventListener("click", function () {
+      var open = primaryNav.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    primaryNav.addEventListener("click", function (e) {
+      if (e.target && e.target.tagName === "A") closeMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeMenu();
+    });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 980) closeMenu();
+    });
+  }
+
+  var io = ("IntersectionObserver" in window)
+    ? new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+        });
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 })
+    : null;
+  if (io) {
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".feature, .card, .flow-step, .arch-band, .step-row, .figure"),
+      function (el) { el.classList.add("reveal"); io.observe(el); }
+    );
+  }
+
+  var form = document.getElementById("brief-form");
+  var out = document.getElementById("brief-out");
+  if (!form || !out) return;
+
+  var fields = [
+    { id: "f-name", test: function (v) { return v.trim().length >= 2; }, msg: "Please tell us your name." },
+    { id: "f-email", test: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }, msg: "Enter a valid email address." },
+    { id: "f-msg", test: function (v) { return v.trim().length >= 12; }, msg: "A sentence or two about the problem, please." }
+  ];
+
+  function setErr(f, ok) {
+    var el = document.getElementById(f.id);
+    var slot = form.querySelector('[data-error-for="' + f.id + '"]');
+    el.setAttribute("aria-invalid", ok ? "false" : "true");
+    if (slot) slot.textContent = ok ? "" : L(f.msg);
+    return ok;
+  }
+
+  fields.forEach(function (f) {
+    var el = document.getElementById(f.id);
+    el.addEventListener("blur", function () { setErr(f, f.test(el.value)); });
+    el.addEventListener("input", function () {
+      if (el.getAttribute("aria-invalid") === "true") setErr(f, f.test(el.value));
+    });
+  });
+
+  function values() {
+    var el = form.elements;
+    return {
+      name: el["name"].value.trim(),
+      email: el["email"].value.trim(),
+      org: el["org"].value.trim(),
+      need: el["need"].value,
+      needLabel: el["need"].options[el["need"].selectedIndex].text,
+      msg: el["message"].value.trim()
+    };
+  }
+
+  function compose() {
+    var v = values();
+    document.getElementById("out-from").textContent = v.name + " · " + v.email;
+    document.getElementById("out-org").textContent = v.org || "—";
+    document.getElementById("out-need").textContent = v.needLabel;
+    document.getElementById("out-msg").textContent = v.msg;
+    out.hidden = false;
+    form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = "none"; });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var firstBad = null;
+    fields.forEach(function (f) {
+      var el = document.getElementById(f.id);
+      if (!setErr(f, f.test(el.value)) && !firstBad) firstBad = el;
+    });
+    if (firstBad) { firstBad.focus(); return; }
+    compose();
+    statusEN = "Brief composed locally. Nothing was sent — review it, then use your mail client.";
+    document.getElementById("brief-status").textContent = L(statusEN);
+  });
+
+  document.getElementById("brief-edit").addEventListener("click", function () {
+    out.hidden = true;
+    form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = ""; });
+    document.getElementById("f-name").focus();
+  });
+
+  document.getElementById("brief-mail").addEventListener("click", function () {
+    var v = values();
+    var subject = L("Data enquiry — ") + v.needLabel;
+    var body = v.msg + "\n\n— " + v.name + (v.org ? " (" + v.org + ")" : "") + "\n" + v.email;
+    window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  });
+})();
+</script>
+</body>
+</html>
