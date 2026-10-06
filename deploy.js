@@ -56,14 +56,16 @@ function main() {
     'marketing-research-swarm.html',
     'ehr-platform-architecture-with-prepass.html'
   ];
+  const docsDistDir = path.join(distDir, 'docs');
+  fs.rmSync(docsDistDir, { recursive: true, force: true });
   for (const doc of diagramDocs) {
     const src = path.join(projectRoot, 'docs', doc);
-    if (fs.existsSync(src)) {
-      fs.mkdirSync(path.join(distDir, 'docs'), { recursive: true });
-      fs.copyFileSync(src, path.join(distDir, 'docs', doc));
-    } else {
-      log(`⚠️  Missing diagram doc: docs/${doc}`, 'yellow');
+    if (!fs.existsSync(src)) {
+      log(`❌ Missing committed diagram doc: docs/${doc} — aborting before deploy`, 'red');
+      process.exit(1);
     }
+    fs.mkdirSync(docsDistDir, { recursive: true });
+    fs.copyFileSync(src, path.join(docsDistDir, doc));
   }
   log('✅ dist/ ready (index.html + resources/ + docs/ diagrams)', 'green');
 

@@ -27,3 +27,8 @@ node_modules/
 *.log
 *.tmp
 tmp/
+
+# Cloudflare Pages deploy staging
+dist/
+node_modules/
+.wrangler/
