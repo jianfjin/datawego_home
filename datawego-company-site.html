@@ -564,6 +564,35 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
 .summary dd { margin: 0; color: var(--fg-2); overflow-wrap: anywhere; }
 #brief-out { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
 #brief-out[hidden] { display: none; }
+#brief-out .confirm-row { display: grid; gap: var(--space-2); }
+#brief-out .manual-row { display: grid; gap: var(--space-1); font-size: var(--text-sm); }
+/* A hidden block must stay hidden even where a rule above it sets display. */
+#brief-out [hidden] { display: none !important; }
+#brief-out .notice--danger {
+  border-color: color-mix(in oklab, var(--danger), transparent 55%);
+  background: color-mix(in oklab, var(--danger), transparent 92%);
+  color: var(--danger-ink);
+}
+/* The bot trap: reachable by a script, invisible and untabbable for a person. */
+.trap { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.trap[hidden] { display: none; }
+.btn { position: relative; }
+.btn[disabled] { opacity: .6; cursor: default; }
+.btn.is-pending { color: transparent; pointer-events: none; }
+.btn.is-pending::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 14px; height: 14px;
+  border: 2px solid color-mix(in oklab, currentColor, transparent 65%);
+  border-top-color: currentColor; border-radius: 50%;
+  color: var(--accent-on); animation: btn-spin .8s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-pending::after { animation-duration: 1.6s; }
+}
+@media (max-width: 700px) {
+  #brief-out .row { flex-direction: column; align-items: stretch; }
+  #brief-out .row .btn { width: 100%; }
+}
 
 /* ─── footer ───────────────────────────────────────────────────────────── */
 .pagefoot { background: var(--surface); border-top: 1px solid var(--border-soft); padding-block: clamp(40px, 6vw, 72px) var(--space-8); font-size: var(--text-sm); color: var(--muted); }
@@ -1096,11 +1125,11 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
         </div>
 
         <div class="row-between" style="margin-top: var(--space-6); gap: var(--space-4);">
-          <p class="meta" style="max-width: 30ch; line-height: 1.5;">Prototype · composes a brief locally, no backend is connected.</p>
+          <p class="meta" style="max-width: 34ch; line-height: 1.5;">Composed in your browser, then sent straight to our inbox.</p>
           <button class="btn btn-primary" type="submit" data-od-id="contact-submit">Prepare my brief</button>
         </div>
 
-        <div id="brief-out" hidden aria-live="polite">
+        <div id="brief-out" hidden>
           <p class="notice" role="status" id="brief-status">Brief composed. Review it below before sending.</p>
           <div class="summary" aria-live="polite">
             <dl>
@@ -1110,11 +1139,20 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
               <dt>Problem</dt><dd id="out-msg">—</dd>
             </dl>
           </div>
+          <div class="confirm-row" id="brief-confirm">
+            <span class="meta">One last check</span>
+            <div id="brief-turnstile" aria-label="Security check"></div>
+          </div>
+          <div class="manual-row" id="brief-manual" hidden>
+            <span>Your brief is still here. You can also write to us directly:</span>
+            <a class="link-inline" href="mailto:info@datawego.nl?subject=Data%20enquiry">info@datawego.nl</a>
+          </div>
           <div class="row" style="gap: var(--space-3); flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" type="button" id="brief-mail" data-od-id="contact-mail">Open in mail client</button>
+            <button class="btn btn-primary btn-sm" type="button" id="brief-send" data-od-id="contact-send">Send enquiry</button>
             <button class="btn btn-quiet btn-sm" type="button" id="brief-edit" data-od-id="contact-edit">Edit answers</button>
           </div>
         </div>
+        <input class="trap" id="f-website" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
       </form>
     </div>
   </section>
@@ -1180,6 +1218,9 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   </div>
 </footer>
 
+<!-- The human check loads explicitly: the panel renders it only once a brief
+     is composed, so a visitor who never reaches send loads nothing. -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 <script>
 (function () {
   "use strict";
@@ -1428,14 +1469,37 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     "From": "Van",
     "Need": "Vraag",
     "Problem": "Vraagstuk",
-    "Open in mail client": "Openen in e-mailprogramma",
     "Edit answers": "Antwoorden bewerken",
     "Please tell us your name.": "Laat even je naam achter.",
     "Enter a valid email address.": "Vul een geldig e-mailadres in.",
     "A sentence or two about the problem, please.": "Geef in een of twee zinnen waar het over gaat.",
-    "Brief composed locally. Nothing was sent — review it, then use your mail client.":
-      "Aanvraag lokaal samengesteld. Er is niets verzonden — bekijk hem en verstuur via je e-mailprogramma.",
     "Data enquiry —": "Data-vraag —",
+    /* the send (U3) — every state the review panel can be in */
+    "Composed in your browser, then sent straight to our inbox.":
+      "Samengesteld in je browser en daarna direct naar onze inbox verstuurd.",
+    "One last check": "Nog één controle",
+    "Security check": "Beveiligingscontrole",
+    "Your brief is still here. You can also write to us directly:":
+      "Je aanvraag staat nog hier. Je kunt ons ook rechtstreeks schrijven:",
+    "Send enquiry": "Verstuur aanvraag",
+    "Brief composed. Nothing has been sent yet — review it, then press Send enquiry.":
+      "Aanvraag samengesteld. Er is nog niets verzonden — bekijk hem en druk op Verstuur aanvraag.",
+    "Sending your enquiry…": "Je aanvraag wordt verstuurd…",
+    "Sent. We'll reply to the address you gave.": "Verstuurd. We antwoorden op het adres dat je opgaf.",
+    "We couldn't complete the security check, or an answer is missing. Check the form and try again.":
+      "We konden de beveiligingscontrole niet afronden, of een antwoord ontbreekt. Controleer het formulier en probeer het opnieuw.",
+    "This page isn't allowed to send from where it is. Reload the page and try again.":
+      "Deze pagina mag niet versturen vanaf waar hij nu staat. Herlaad de pagina en probeer het opnieuw.",
+    "That's too many enquiries in a row from this connection. Wait a minute and send again.":
+      "Te veel aanvragen achter elkaar vanaf deze verbinding. Wacht een minuut en verstuur opnieuw.",
+    "Our mail service didn't answer. Try again in a moment, or write to us directly.":
+      "Onze maildienst gaf geen antwoord. Probeer het zo opnieuw, of schrijf ons rechtstreeks.",
+    "We couldn't reach the send service from this page. Send it directly, or reload the page and try again.":
+      "We konden de verstuurdienst vanaf deze pagina niet bereiken. Stuur rechtstreeks, of herlaad de pagina en probeer het opnieuw.",
+    "The security check couldn't load. Reload the page and try again, or write to us directly.":
+      "De beveiligingscontrole kon niet laden. Herlaad de pagina en probeer het opnieuw, of schrijf ons rechtstreeks.",
+    "The security check isn't ready yet. Give it a moment and press send again.":
+      "De beveiligingscontrole is nog niet klaar. Geef hem even de tijd en druk opnieuw op versturen.",
 
     /* footer */
     "Building AI-powered data platforms for healthcare, life sciences and enterprise innovation.":
@@ -1672,6 +1736,187 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     };
   }
 
+  /* ── sending the brief ─────────────────────────────────────────────────
+     Two steps, deliberately. "Prepare my brief" composes the summary in the
+     page and asks nothing of the network; "Send enquiry" is the moment the
+     enquiry leaves, and it POSTs to /api/contact so the Function — not the
+     visitor's mail client — decides who receives it.
+
+     Every way a send can fail gets its own sentence and a visible way forward.
+     Silence is what made this form look broken for a year: the mailto opened
+     an external handler on machines with no mail client and reported nothing.
+     Direct mail stays as the fallback an honest failure offers, never as the
+     happy path.
+  ──────────────────────────────────────────────────────────────────────────*/
+
+  var TS_SITEKEY = "0x4AAAAAAE_LDKoiHQlhtMM2";
+
+  var sendBtn = document.getElementById("brief-send");
+  var statusEl = document.getElementById("brief-status");
+  var confirmRow = document.getElementById("brief-confirm");
+  var manualRow = document.getElementById("brief-manual");
+  var manualLink = manualRow ? manualRow.querySelector("a") : null;
+  var widgetBox = document.getElementById("brief-turnstile");
+  var canSend = !!(sendBtn && statusEl && confirmRow && manualRow && widgetBox);
+
+  /* one sentence per way the panel can end up; each is a dictionary key */
+  var S = {
+    composed: "Brief composed. Nothing has been sent yet — review it, then press Send enquiry.",
+    sending: "Sending your enquiry…",
+    sent: "Sent. We'll reply to the address you gave.",
+    refused: "We couldn't complete the security check, or an answer is missing. Check the form and try again.",
+    wrongHost: "This page isn't allowed to send from where it is. Reload the page and try again.",
+    tooMany: "That's too many enquiries in a row from this connection. Wait a minute and send again.",
+    noProvider: "Our mail service didn't answer. Try again in a moment, or write to us directly.",
+    unreachable: "We couldn't reach the send service from this page. Send it directly, or reload the page and try again.",
+    widgetFailed: "The security check couldn't load. Reload the page and try again, or write to us directly.",
+    widgetPending: "The security check isn't ready yet. Give it a moment and press send again."
+  };
+
+  var state = "idle";        /* idle | pending | sent | failed */
+  var widget = "loading";    /* loading | ready | failed */
+  var submissionId = "";     /* one per brief, so a retry is the same send */
+  var widgetInstance = null;
+
+  function newId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      try { return window.crypto.randomUUID(); } catch (e) {}
+    }
+    return "brief-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
+
+  function tokenField() {
+    return form.querySelector('[name="cf-turnstile-response"]');
+  }
+
+  function manualHref() {
+    var v = values();
+    var subject = "Data enquiry — " + v.needLabel;
+    var body = v.msg + "\n\n— " + v.name + (v.org ? " (" + v.org + ")" : "") + "\n" + v.email;
+    return "mailto:info@datawego.nl?subject=" + encodeURIComponent(subject) +
+           "&body=" + encodeURIComponent(body);
+  }
+
+  function setStatus(sentence) {
+    statusEN = sentence;
+    statusEl.textContent = L(sentence);
+  }
+
+  /* the panel's look is a function of two variables, and nothing writes to the
+     DOM anywhere else — a state you cannot reach is a state you cannot test */
+  function paint() {
+    if (!canSend) return;
+    var failed = state === "failed";
+    statusEl.classList.toggle("notice--danger", failed);
+    statusEl.setAttribute("role", failed ? "alert" : "status");
+    manualRow.hidden = !(failed || widget === "failed");
+    if (manualLink && !manualRow.hidden) manualLink.href = manualHref();
+    confirmRow.hidden = state === "sent";
+    sendBtn.disabled = state === "pending" || state === "sent";
+    sendBtn.classList.toggle("is-pending", state === "pending");
+  }
+
+  function focusStatus() {
+    if (!statusEl.hasAttribute("tabindex")) statusEl.setAttribute("tabindex", "-1");
+    try { statusEl.focus({ preventScroll: true }); } catch (e) { statusEl.focus(); }
+  }
+
+  function renderWidget() {
+    if (widgetInstance || !canSend || out.hidden) return;
+    try {
+      widgetInstance = window.turnstile.render(widgetBox, {
+        sitekey: TS_SITEKEY,
+        "refresh-expired": "always",
+        callback: function () { widget = "ready"; paint(); },
+        "expired-callback": function () { widget = "loading"; paint(); },
+        "error-callback": function (code) {
+          widget = "failed";
+          console.error("contact: the security check did not load (Turnstile code " + code + ")");
+          paint();
+        }
+      });
+    } catch (e) {
+      widget = "failed";
+      paint();
+    }
+  }
+
+  function startWidget() {
+    if (!canSend || widgetInstance || out.hidden) return;
+    if (!window.turnstile) { widget = "failed"; paint(); return; }
+    try { window.turnstile.ready(renderWidget); } catch (e) { renderWidget(); }
+  }
+
+  /* a refused send burns the token it presented, so the visitor gets a fresh
+     challenge rather than being asked to reload the page */
+  function resetWidget() {
+    if (!canSend) return;
+    var field = tokenField();
+    if (field) field.value = "";
+    widget = "loading";
+    if (widgetInstance && window.turnstile && typeof window.turnstile.reset === "function") {
+      try { window.turnstile.reset(widgetInstance); return; } catch (e) { widgetInstance = null; }
+    }
+    startWidget();
+  }
+
+  function failWith(sentence) {
+    state = "failed";
+    setStatus(sentence);
+    resetWidget();
+    paint();
+    focusStatus();
+  }
+
+  function markSent() {
+    state = "sent";
+    setStatus(S.sent);
+    paint();
+    focusStatus();
+  }
+
+  function sendNow() {
+    if (!canSend || state === "pending" || state === "sent") return;
+
+    var field = tokenField();
+    var token = field ? field.value : "";
+    if (!token) { failWith(widget === "failed" ? S.widgetFailed : S.widgetPending); return; }
+    if (!submissionId) submissionId = newId();
+
+    var v = values();
+    var trap = form.elements.website ? form.elements.website.value : "";
+    state = "pending";
+    setStatus(S.sending);
+    paint();
+
+    fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: v.name,
+        email: v.email,
+        org: v.org,
+        need: v.need,
+        message: v.msg,
+        turnstileToken: token,
+        submissionId: submissionId,
+        website: trap
+      })
+    }).then(function (response) {
+      /* the Function answers each gate with its own status; a status we did not
+         design for means the request never became an enquiry, so it is the
+         unreachable sentence and not a silent success */
+      if (response.ok && response.status === 201) { markSent(); return; }
+      if (response.status === 400) { failWith(S.refused); return; }
+      if (response.status === 403) { failWith(S.wrongHost); return; }
+      if (response.status === 429) { failWith(S.tooMany); return; }
+      if (response.status === 503) { failWith(S.noProvider); return; }
+      failWith(S.unreachable);
+    }, function () {
+      failWith(S.unreachable);
+    });
+  }
+
   function compose() {
     var v = values();
     document.getElementById("out-from").textContent = v.name + " · " + v.email;
@@ -1680,6 +1925,11 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     document.getElementById("out-msg").textContent = v.msg;
     out.hidden = false;
     form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = "none"; });
+    if (!submissionId) submissionId = newId();
+    if (!canSend) return;
+    if (state === "idle") setStatus(S.composed);
+    startWidget();
+    paint();
   }
 
   form.addEventListener("submit", function (e) {
@@ -1690,23 +1940,32 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
       if (!setErr(f, f.test(el.value)) && !firstBad) firstBad = el;
     });
     if (firstBad) { firstBad.focus(); return; }
+    /* a brief that already arrived is not the same brief: start a new one, so a
+       second send cannot be swallowed by the provider's idempotency key */
+    if (state === "sent") { state = "idle"; submissionId = ""; resetWidget(); }
     compose();
-    statusEN = "Brief composed locally. Nothing was sent — review it, then use your mail client.";
-    document.getElementById("brief-status").textContent = L(statusEN);
+    if (canSend) sendBtn.focus();
   });
+
+  if (sendBtn) sendBtn.addEventListener("click", sendNow);
 
   document.getElementById("brief-edit").addEventListener("click", function () {
     out.hidden = true;
     form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = ""; });
+    state = "idle";
+    statusEN = "";
+    submissionId = newId();
+    /* the widget stays as it is: refresh-expired renews a spent token by itself,
+       and re-rendering into a hidden box is how a widget ends up never coming back */
+    paint();
     document.getElementById("f-name").focus();
   });
 
-  document.getElementById("brief-mail").addEventListener("click", function () {
-    var v = values();
-    var subject = L("Data enquiry — ") + v.needLabel;
-    var body = v.msg + "\n\n— " + v.name + (v.org ? " (" + v.org + ")" : "") + "\n" + v.email;
-    window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-  });
+  /* api.js loads deferred, so it exists by "load" — and if it never does, the
+     widget is failed rather than pending, which says so and offers the fallback */
+  window.addEventListener("load", startWidget);
+
+  paint();
 })();
 </script>
 </body>
