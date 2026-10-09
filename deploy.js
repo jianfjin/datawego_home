@@ -34,6 +34,9 @@ function exec(command, options = {}) {
 function main() {
   const projectRoot = __dirname;
   const distDir = path.join(projectRoot, 'dist');
+  // `--skip-deploy` assembles dist/ and stops, so `wrangler pages dev` can serve
+  // the page and the Function together without shipping anything to Cloudflare.
+  const assembleOnly = process.argv.includes('--skip-deploy');
 
   log('🚀 Starting DataWeGo deployment...', 'yellow');
 
@@ -68,6 +71,29 @@ function main() {
     fs.copyFileSync(src, path.join(docsDistDir, doc));
   }
   log('✅ dist/ ready (index.html + resources/ + docs/ diagrams)', 'green');
+
+  // Step 1b: Functions routing, and the guards that keep it honest.
+  // functions/ stays tracked at the repo root — wrangler reads it from the
+  // directory the command runs in, which is projectRoot below — so the Function is
+  // bundled from source and nothing has to be copied into dist/. A dist/functions
+  // would instead be uploaded as a static asset (its source readable at a URL), and
+  // a dist/_worker.js replaces the routing altogether. Both are fatal here.
+  fs.writeFileSync(
+    path.join(distDir, '_routes.json'),
+    JSON.stringify({ version: 1, include: ['/api/*'], exclude: [] }, null, 2) + '\n'
+  );
+  for (const hazard of ['_worker.js', 'functions']) {
+    if (fs.existsSync(path.join(distDir, hazard))) {
+      log(`❌ dist/${hazard} exists — it would ship as an asset beside the Function. Remove dist/ and re-run.`, 'red');
+      process.exit(1);
+    }
+  }
+  log('✅ Functions routing ready (_routes.json covers only /api/*; no dist/functions, no _worker.js)', 'green');
+
+  if (assembleOnly) {
+    log('⏭  dist/ assembled, nothing deployed. Run `npx wrangler pages dev` for http://localhost:8788', 'green');
+    return;
+  }
 
   // Step 2: Deploy to Cloudflare Pages (production branch)
   log('🌐 Deploying to Cloudflare Pages...', 'yellow');

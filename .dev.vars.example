@@ -1,0 +1,17 @@
+# Copy to .dev.vars (git-ignored) for `wrangler pages dev`, then fill in.
+# Production values live in the Pages project's Secrets, never in this file.
+
+# The real secret key of widget 0x4AAAAAAE_LDKoiHQlhtMM2, from Cloudflare →
+# Turnstile → that widget. localhost and 127.0.0.1 are already authorized
+# hostnames, so a browser on http://localhost:8788 gets a usable token.
+# Cloudflare's always-pass test secret is NOT usable here: siteverify answers with
+# hostname "example.com" for it, and the Function requires the confirmation to name
+# the host that served the page.
+TURNSTILE_SECRET=
+
+# A key restricted to sending for datawego.nl only. A bogus value here still proves
+# every gate up to the send and the 503 failure state, but nothing is delivered.
+RESEND_API_KEY=
+
+# Optional — the sender on every enquiry. Defaults to this same value in the code.
+CONTACT_FROM=DataWeGo Website <info@datawego.nl>

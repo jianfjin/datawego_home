@@ -1,0 +1,7 @@
+name = "datawego"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-05"
+
+[[kv_namespaces]]
+binding = "CONTACT_RATE_LIMIT"
+id = "028ba25583fd4a6886c3aedd22a435ac"
