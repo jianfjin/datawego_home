@@ -32,3 +32,6 @@ tmp/
 dist/
 node_modules/
 .wrangler/
+
+# ── Local dev secrets for Pages Functions (never commit) ─
+.dev.vars
