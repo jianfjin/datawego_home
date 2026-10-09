@@ -62,13 +62,14 @@ export const onRequestPost = async ({ request, env }) => {
 
   const name = bounded(data.name, MIN_NAME_LENGTH, MAX_NAME_LENGTH);
   const email = normalizeEmail(data.email);
-  const org = data.org === undefined || data.org === null || data.org === "" ? null : bounded(data.org, 1, MAX_ORG_LENGTH);
+  const orgOmitted = data.org === undefined || data.org === null || data.org === "";
+  const org = orgOmitted ? null : bounded(data.org, 1, MAX_ORG_LENGTH);
   const need = typeof data.need === "string" && NEED_OPTIONS.includes(data.need) ? data.need : null;
   const message = bounded(data.message, MIN_MESSAGE_LENGTH, MAX_MESSAGE_LENGTH);
   const submissionId = bounded(data.submissionId, 1, MAX_SUBMISSION_ID_LENGTH);
 
   if (!name || !email || !need || !message || !submissionId) return invalidRequest();
-  if (org === null && data.org !== undefined && data.org !== null && data.org !== "") return invalidRequest();
+  if (org === null && !orgOmitted) return invalidRequest();
 
   if (!(await verifyTurnstile(request, env, data.turnstileToken))) return invalidRequest();
 
@@ -82,7 +83,7 @@ export const onRequestPost = async ({ request, env }) => {
 
   const accepted = await sendResend(env, {
     to: CONTACT_RECIPIENT,
-    from: env.CONTACT_FROM ?? "DataWeGo Website <info@datawego.nl>",
+    from: env.CONTACT_FROM ?? `DataWeGo Website <${CONTACT_RECIPIENT}>`,
     replyTo: email,
     subject: `${SUBJECT_PREFIX}${need}`,
     text: `Name: ${name}\nEmail: ${email}\nOrganisation: ${org ?? "—"}\nNeed: ${need}\n\n${message}`,

@@ -564,10 +564,8 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
 .summary dd { margin: 0; color: var(--fg-2); overflow-wrap: anywhere; }
 #brief-out { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
 #brief-out[hidden] { display: none; }
-#brief-out .confirm-row { display: grid; gap: var(--space-2); }
-#brief-out .manual-row { display: grid; gap: var(--space-1); font-size: var(--text-sm); }
-/* A hidden block must stay hidden even where a rule above it sets display. */
-#brief-out [hidden] { display: none !important; }
+#brief-out .confirm-row:not([hidden]) { display: grid; gap: var(--space-2); }
+#brief-out .manual-row:not([hidden]) { display: grid; gap: var(--space-1); font-size: var(--text-sm); }
 #brief-out .notice--danger {
   border-color: color-mix(in oklab, var(--danger), transparent 55%);
   background: color-mix(in oklab, var(--danger), transparent 92%);
@@ -575,7 +573,6 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
 }
 /* The bot trap: reachable by a script, invisible and untabbable for a person. */
 .trap { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
-.trap[hidden] { display: none; }
 .btn { position: relative; }
 .btn[disabled] { opacity: .6; cursor: default; }
 .btn.is-pending { color: transparent; pointer-events: none; }
@@ -1092,17 +1089,17 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
         <div class="form-grid">
           <div class="field">
             <label for="f-name">Name</label>
-            <input class="input" id="f-name" name="name" type="text" autocomplete="name" placeholder="Your name" required />
+            <input class="input" id="f-name" name="name" type="text" autocomplete="name" placeholder="Your name" maxlength="160" required />
             <span class="field-error" data-error-for="f-name"></span>
           </div>
           <div class="field">
             <label for="f-email">Work email</label>
-            <input class="input" id="f-email" name="email" type="email" autocomplete="email" placeholder="you@organisation.com" required />
+            <input class="input" id="f-email" name="email" type="email" autocomplete="email" placeholder="you@organisation.com" maxlength="320" required />
             <span class="field-error" data-error-for="f-email"></span>
           </div>
           <div class="field">
             <label for="f-org">Organisation</label>
-            <input class="input" id="f-org" name="org" type="text" autocomplete="organization" placeholder="Company or institution" />
+            <input class="input" id="f-org" name="org" type="text" autocomplete="organization" placeholder="Company or institution" maxlength="160" />
             <span class="field-error" data-error-for="f-org"></span>
           </div>
           <div class="field">
@@ -1119,7 +1116,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
           </div>
           <div class="field full">
             <label for="f-msg">The decision this data should improve</label>
-            <textarea class="textarea" id="f-msg" name="message" placeholder="Two or three sentences are enough to start." required></textarea>
+            <textarea class="textarea" id="f-msg" name="message" placeholder="Two or three sentences are enough to start." maxlength="4000" required></textarea>
             <span class="field-error" data-error-for="f-msg"></span>
           </div>
         </div>
@@ -1130,7 +1127,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
         </div>
 
         <div id="brief-out" hidden>
-          <p class="notice" role="status" id="brief-status">Brief composed. Review it below before sending.</p>
+          <p class="notice" role="status" id="brief-status">Brief composed. Nothing has been sent yet — review it, then press Send enquiry.</p>
           <div class="summary" aria-live="polite">
             <dl>
               <dt>From</dt><dd id="out-from">—</dd>
@@ -1145,7 +1142,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
           </div>
           <div class="manual-row" id="brief-manual" hidden>
             <span>Your brief is still here. You can also write to us directly:</span>
-            <a class="link-inline" href="mailto:info@datawego.nl?subject=Data%20enquiry">info@datawego.nl</a>
+            <a class="link-inline" href="mailto:info@datawego.nl">info@datawego.nl</a>
           </div>
           <div class="row" style="gap: var(--space-3); flex-wrap: wrap;">
             <button class="btn btn-primary btn-sm" type="button" id="brief-send" data-od-id="contact-send">Send enquiry</button>
@@ -1463,9 +1460,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     "Something else": "Iets anders",
     "The decision this data should improve": "De beslissing die deze data moet verbeteren",
     "Two or three sentences are enough to start.": "Twee of drie zinnen zijn genoeg om te beginnen.",
-    "Prototype · composes a brief locally, no backend is connected.": "Prototype · stelt de aanvraag lokaal samen; er is geen backend gekoppeld.",
     "Prepare my brief": "Stel mijn aanvraag op",
-    "Brief composed. Review it below before sending.": "Aanvraag samengesteld. Bekijk hem hieronder voordat je verstuurt.",
     "From": "Van",
     "Need": "Vraag",
     "Problem": "Vraagstuk",
@@ -1473,8 +1468,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     "Please tell us your name.": "Laat even je naam achter.",
     "Enter a valid email address.": "Vul een geldig e-mailadres in.",
     "A sentence or two about the problem, please.": "Geef in een of twee zinnen waar het over gaat.",
-    "Data enquiry —": "Data-vraag —",
-    /* the send (U3) — every state the review panel can be in */
+    /* the send — every state the review panel can be in */
     "Composed in your browser, then sent straight to our inbox.":
       "Samengesteld in je browser en daarna direct naar onze inbox verstuurd.",
     "One last check": "Nog één controle",
@@ -1589,8 +1583,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     });
 
     if (root) syncThemeButton();
-    var status = document.getElementById("brief-status");
-    if (status && statusEN) status.textContent = L(statusEN);
+    if (statusEN && statusEl) setStatus(statusEN);
     if (typeof compose === "function" && out && !out.hidden) compose();
 
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
@@ -1773,6 +1766,8 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     widgetPending: "The security check isn't ready yet. Give it a moment and press send again."
   };
 
+  var REFUSAL = { 400: S.refused, 403: S.wrongHost, 429: S.tooMany, 503: S.noProvider };
+
   var state = "idle";        /* idle | pending | sent | failed */
   var widget = "loading";    /* loading | ready | failed */
   var submissionId = "";     /* one per brief, so a retry is the same send */
@@ -1785,13 +1780,19 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     return "brief-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
 
+  function ensureId() {
+    if (!submissionId) submissionId = newId();
+  }
+
   function tokenField() {
     return form.querySelector('[name="cf-turnstile-response"]');
   }
 
   function manualHref() {
     var v = values();
-    var subject = "Data enquiry — " + v.needLabel;
+    /* the value, not the label: a mailbox holds one vocabulary whichever way the
+       enquiry arrived, so this subject matches the Function's word for word */
+    var subject = "Data enquiry — " + v.need;
     var body = v.msg + "\n\n— " + v.name + (v.org ? " (" + v.org + ")" : "") + "\n" + v.email;
     return "mailto:info@datawego.nl?subject=" + encodeURIComponent(subject) +
            "&body=" + encodeURIComponent(body);
@@ -1881,7 +1882,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     var field = tokenField();
     var token = field ? field.value : "";
     if (!token) { failWith(widget === "failed" ? S.widgetFailed : S.widgetPending); return; }
-    if (!submissionId) submissionId = newId();
+    ensureId();
 
     var v = values();
     var trap = form.elements.website ? form.elements.website.value : "";
@@ -1907,11 +1908,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
          design for means the request never became an enquiry, so it is the
          unreachable sentence and not a silent success */
       if (response.ok && response.status === 201) { markSent(); return; }
-      if (response.status === 400) { failWith(S.refused); return; }
-      if (response.status === 403) { failWith(S.wrongHost); return; }
-      if (response.status === 429) { failWith(S.tooMany); return; }
-      if (response.status === 503) { failWith(S.noProvider); return; }
-      failWith(S.unreachable);
+      failWith(REFUSAL[response.status] || S.unreachable);
     }, function () {
       failWith(S.unreachable);
     });
@@ -1925,7 +1922,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     document.getElementById("out-msg").textContent = v.msg;
     out.hidden = false;
     form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = "none"; });
-    if (!submissionId) submissionId = newId();
+    ensureId();
     if (!canSend) return;
     if (state === "idle") setStatus(S.composed);
     startWidget();
@@ -1942,7 +1939,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     if (firstBad) { firstBad.focus(); return; }
     /* a brief that already arrived is not the same brief: start a new one, so a
        second send cannot be swallowed by the provider's idempotency key */
-    if (state === "sent") { state = "idle"; submissionId = ""; resetWidget(); }
+    if (state === "sent") { state = "idle"; submissionId = newId(); resetWidget(); }
     compose();
     if (canSend) sendBtn.focus();
   });

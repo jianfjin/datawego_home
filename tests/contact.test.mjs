@@ -15,11 +15,6 @@ const ENDPOINT = `${PAGE_ORIGIN}/api/contact`;
 const RESEND = "https://api.resend.com/emails";
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-function bodyField(field, value) {
-  const payload = { ...validPayload(), [field]: value };
-  return { payload };
-}
-
 function validPayload(overrides = {}) {
   return {
     name: "Ana Ruiz",
@@ -167,12 +162,12 @@ test("an origin that is not the page's own is forbidden before anything else", a
   }
 });
 
-test("every response opts out of caching", async () => {
-  const ok = await send(validPayload());
-  assert.equal(ok.response.headers.get("Cache-Control"), "no-store");
-
-  const refused = await send(validPayload(), { origin: "https://evil.example" });
-  assert.equal(refused.response.headers.get("Cache-Control"), "no-store");
+test("every response is plain JSON and opts out of caching", async () => {
+  for (const options of [{}, { origin: "https://evil.example" }]) {
+    const { response } = await send(validPayload(), options);
+    assert.equal(response.headers.get("Content-Type"), "application/json");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+  }
 });
 
 test("a body addressed at another recipient, or carrying an unlisted field, is refused", async () => {
@@ -243,16 +238,10 @@ test("six submissions from one visitor IP inside a minute: five send, the sixth 
   const limiter = kvBinding();
   const statuses = [];
   for (let i = 0; i < 6; i += 1) {
-    const network = stubNetwork();
-    try {
-      const response = await onRequestPost({
-        request: request(validPayload({ submissionId: `sub-${i}` })),
-        env: env({ CONTACT_RATE_LIMIT: limiter }),
-      });
-      statuses.push([response.status, response.headers.get("Retry-After")]);
-    } finally {
-      network.restore();
-    }
+    const { response } = await send(validPayload({ submissionId: `sub-${i}` }), {
+      context: { env: { CONTACT_RATE_LIMIT: limiter } },
+    });
+    statuses.push([response.status, response.headers.get("Retry-After")]);
   }
 
   assert.deepEqual(
@@ -266,33 +255,21 @@ test("the counter belongs to the address, not to the whole site", async () => {
   for (const ip of ["198.51.100.4", "203.0.113.99"]) {
     const limiter = kvBinding();
     for (let i = 0; i < 5; i += 1) {
-      const network = stubNetwork();
-      try {
-        const response = await onRequestPost({
-          request: request(validPayload({ submissionId: `${ip}-${i}` }), {
-            headers: new Headers({ "CF-Connecting-IP": ip }),
-          }),
-          env: env({ CONTACT_RATE_LIMIT: limiter }),
-        });
-        assert.equal(response.status, 201, `${ip} submission ${i}`);
-      } finally {
-        network.restore();
-      }
+      const { response } = await send(validPayload({ submissionId: `${ip}-${i}` }), {
+        headers: new Headers({ "CF-Connecting-IP": ip }),
+        context: { env: { CONTACT_RATE_LIMIT: limiter } },
+      });
+      assert.equal(response.status, 201, `${ip} submission ${i}`);
     }
   }
 
   const limiter = kvBinding();
-  const network = stubNetwork();
-  try {
-    const response = await onRequestPost({
-      request: request(validPayload(), { headers: new Headers({ "CF-Connecting-IP": "198.51.100.4" }) }),
-      env: env({ CONTACT_RATE_LIMIT: undefined }),
-    });
-    assert.equal(response.status, 201, "a missing binding skips the counter rather than blocking traffic");
-    assert.equal(limiter.store.size, 0);
-  } finally {
-    network.restore();
-  }
+  const { response } = await send(validPayload(), {
+    headers: new Headers({ "CF-Connecting-IP": "198.51.100.4" }),
+    context: { env: { CONTACT_RATE_LIMIT: undefined } },
+  });
+  assert.equal(response.status, 201, "a missing binding skips the counter rather than blocking traffic");
+  assert.equal(limiter.store.size, 0);
 });
 
 test("field edges are refused without a provider call", async () => {

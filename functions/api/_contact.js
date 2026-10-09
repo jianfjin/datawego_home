@@ -2,9 +2,9 @@
  * Shared pieces for POST /api/contact.
  *
  * Ported in behaviour from ~/projects/edm_home/functions/api/_publicForms.ts, with
- * two deliberate differences recorded in the plan (KTD3a, KTD4): the confirmation
- * check insists on the host that served the page, and the throttle is a KV counter
- * because Pages Functions have no rate-limit binding.
+ * two deliberate differences: the confirmation check insists on the host that
+ * served the page, and the throttle is a KV counter because Pages Functions have
+ * no rate-limit binding.
  *
  * Files in functions/ whose name starts with an underscore are not routes, so this
  * module is reachable only to the Function that imports it.
@@ -15,13 +15,16 @@ export const SUBJECT_PREFIX = "Data enquiry — ";
 
 export const MIN_NAME_LENGTH = 2;
 export const MAX_NAME_LENGTH = 160;
-export const MAX_EMAIL_LENGTH = 320;
+const MAX_EMAIL_LENGTH = 320;
 export const MAX_ORG_LENGTH = 160;
 export const MIN_MESSAGE_LENGTH = 12;
 export const MAX_MESSAGE_LENGTH = 4000;
 export const MAX_SUBMISSION_ID_LENGTH = 128;
 
-/** The English `value` attributes of #f-need. Labels translate, values do not (KTD7). */
+/**
+ * The English `value` attributes of #f-need. Labels translate, values do not, so one
+ * mailbox search finds every enquiry about a need whichever language it arrived in.
+ */
 export const NEED_OPTIONS = Object.freeze([
   "Data platform",
   "AI-powered solution",
@@ -31,28 +34,28 @@ export const NEED_OPTIONS = Object.freeze([
   "Something else",
 ]);
 
-export const RATE_LIMIT_WINDOW_SECONDS = 60;
-export const RATE_LIMIT_MAX_PER_WINDOW = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_PER_WINDOW = 5;
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const RESEND_URL = "https://api.resend.com/emails";
 
 export function jsonNoStore(data, init = {}) {
-  const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
-  headers.set("Cache-Control", "no-store");
-  return new Response(JSON.stringify(data), { ...init, headers });
+  return Response.json(data, {
+    ...init,
+    headers: { ...init.headers, "Cache-Control": "no-store" },
+  });
 }
 
 /** A hostname as Cloudflare compares it: lowercase, no port, no trailing dot. */
-export function normalizeHostname(value) {
+function normalizeHostname(value) {
   if (typeof value !== "string") return null;
   const host = value.trim().toLowerCase().replace(/:\d+$/, "").replace(/\.+$/, "");
   return /^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/.test(host) ? host : null;
 }
 
 /** The host that served this request, which is the only host a token may name. */
-export function servingHost(request) {
+function servingHost(request) {
   return normalizeHostname(new URL(request.url).hostname);
 }
 
@@ -61,7 +64,7 @@ export function sameOrigin(request) {
   return origin !== null && origin === new URL(request.url).origin;
 }
 
-export function clientIp(request) {
+function clientIp(request) {
   return (
     request.headers.get("CF-Connecting-IP") ??
     request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ??
@@ -101,7 +104,7 @@ export async function parsePublicJson(request) {
  * An unset secret, a short token, a `success: false`, or a hostname that is not
  * exactly this host all answer no. The hostname test is not optional: the same
  * sitekey also guards edmf.nl, and a contains- or suffix-style comparison would
- * let datawego.nl.attacker.tld through (KTD3a).
+ * let datawego.nl.attacker.tld through.
  */
 export async function verifyTurnstile(request, env, token) {
   if (!env.TURNSTILE_SECRET || typeof token !== "string" || token.length < 10) return false;
@@ -124,13 +127,13 @@ export async function verifyTurnstile(request, env, token) {
 }
 
 /**
- * Five accepted submissions per visitor IP address per minute (KTD4).
+ * Five accepted submissions per visitor IP address per minute.
  *
  * The window is anchored at the first request it counts. A KV read-then-write is
  * only eventually consistent, so this is a backstop against a retrying visitor and
  * against one office's shared address — Turnstile is the gate. A missing binding or
  * a failing read skips the counter rather than blocking traffic, which is the one
- * deliberate exception to "every uncertain gate denies" (KTD2).
+ * deliberate exception to "every uncertain gate denies".
  */
 export async function limitByIp(request, env) {
   const kv = env.CONTACT_RATE_LIMIT;
@@ -170,7 +173,7 @@ export async function limitByIp(request, env) {
 
 /**
  * Hand one enquiry to Resend. The key is forwarded, never regenerated, so a retry
- * of the same brief is the same send (KTD5).
+ * of the same brief is the same send.
  *
  * A refusal logs the provider's status and error name — enough to trace a visitor's
  * "it wouldn't send" — and deliberately not the whole response body, which can carry
