@@ -520,3 +520,107 @@ test("the page keeps the send agreement identical to the Function's", () => {
     assert.ok(accepted.includes(key), `#${key} is posted but not on the allowlist, so every send would 400`);
   }
 });
+
+/**
+ * The widget's own script refuses the entire render when an option carries a value
+ * outside its vocabulary. Only the options api.js actually validates are listed
+ * below, read out of its own validator messages at
+ * https://challenges.cloudflare.com/turnstile/v0/api.js — a key it does not police
+ * cannot break the render, while one of these throws, and the page's catch turns
+ * that throw into "the security check failed" for every visitor on every host.
+ *
+ * Nothing crosses the network and nothing is logged when that happens, and the
+ * offline double issues a token for whatever object it is handed, so this suite
+ * stayed green while the deployed page refused to send at all. It surfaced only
+ * once the live page was driven — which is the reason it is asserted statically now.
+ */
+const TS_ENUM_OPTIONS = {
+  "refresh-expired": ["never", "manual", "auto"],
+  "refresh-timeout": ["never", "manual", "auto"],
+  execution: ["render", "execute"],
+  retry: ["never", "auto"],
+  size: ["normal", "compact"],
+  theme: ["dark", "light", "auto"],
+};
+
+/** The page's turnstile.render() options as one block of source, comments removed. */
+function renderOptionBlock(source) {
+  const call = source.indexOf("turnstile.render(");
+  if (call === -1) return null;
+  const open = source.indexOf("{", call);
+  let depth = 0;
+  let end = -1;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    else if (source[i] === "}" && (depth -= 1) === 0) { end = i; break; }
+  }
+  if (end === -1) return null;
+  // Comments come out before anything is split on commas. A note written in prose
+  // carries commas of its own, and an option annotated that way disappears into the
+  // middle of the sentence — the loop below would find nothing to look at and call
+  // the page correct. This is how the check itself first went green with "always".
+  return source.slice(open + 1, end).replace(/\/\*[\s\S]*?\*\//g, " ");
+}
+
+/** That block keyed by option: string values verbatim, anything else as a reference. */
+function renderOptions(block) {
+  const entries = [];
+  let level = 0;
+  let piece = "";
+  for (const char of block) {
+    if (char === "{" || char === "(" || char === "[") level += 1;
+    else if (char === "}" || char === ")" || char === "]") level -= 1;
+    if (char === "," && level === 0) { entries.push(piece); piece = ""; continue; }
+    piece += char;
+  }
+  entries.push(piece);
+
+  const options = {};
+  for (const entry of entries) {
+    const pair = entry.match(/^\s*"?([A-Za-z][\w-]*)"?\s*:\s*(.*)$/s);
+    if (!pair) continue;
+    const literal = pair[2].trim().match(/^"([^"]*)"$/);
+    if (literal) options[pair[1]] = literal[1];
+    else options[pair[1]] = { reference: pair[2].trim() };
+  }
+  return options;
+}
+
+test("the page hands turnstile.render only values api.js will accept", () => {
+  const page = readFileSync(new URL("../datawego-company-site.html", import.meta.url), "utf8");
+  const block = renderOptionBlock(page);
+  assert.ok(block, "the page renders the widget explicitly");
+  const options = renderOptions(block);
+
+  // The read is anchored before any verdict leans on it. These three are the render
+  // call's own shape — which key, which success callback, which failure callback — and
+  // if the scan stops seeing them an option could sit unchecked while the suite
+  // reports green, which is exactly the hole this test was written to close.
+  assert.ok(options.sitekey !== undefined, "the site key came off the call");
+  assert.ok(options.callback !== undefined, "the success callback came off the call");
+  assert.ok(options["error-callback"] !== undefined, "the failure callback came off the call");
+
+  for (const [name, vocabulary] of Object.entries(TS_ENUM_OPTIONS)) {
+    const value = options[name];
+    if (value === undefined) continue;
+    assert.equal(
+      typeof value,
+      "string",
+      `${name} has to be a literal word; api.js reads the value, not a reference`
+    );
+    assert.ok(
+      vocabulary.includes(value),
+      `turnstile.render refuses "${name}": "${value}" — it takes ${vocabulary.join("|")}, ` +
+        "and a word it refuses throws, failing every send from the page"
+    );
+  }
+
+  const sitekey = page.match(/var TS_SITEKEY = "([^"]*)"/);
+  assert.ok(sitekey, "the site key is named once, in the page");
+  assert.match(sitekey[1], /^0x[0-9A-Za-z_]{15,}$/, "and it carries the shape of a Turnstile site key");
+  assert.deepEqual(
+    options.sitekey,
+    { reference: "TS_SITEKEY" },
+    "the render call passes that name, so one edit reaches the widget"
+  );
+});

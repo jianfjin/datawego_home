@@ -1830,7 +1830,11 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     try {
       widgetInstance = window.turnstile.render(widgetBox, {
         sitekey: TS_SITEKEY,
-        "refresh-expired": "always",
+        /* api.js validates this one and throws out of render() on a value outside
+           never|manual|auto — a word it does not know fails every visitor on every
+           host, quietly, because the throw lands in the catch below. `auto` keeps a
+           brief alive when a visitor sits on the confirm screen past expiry. */
+        "refresh-expired": "auto",
         callback: function () { widget = "ready"; paint(); },
         "expired-callback": function () { widget = "loading"; paint(); },
         "error-callback": function (code) {
