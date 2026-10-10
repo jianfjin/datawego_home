@@ -5,10 +5,22 @@
  * fake KV binding. Run with `node --test` from the repository root.
  */
 
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { onRequestPost } from "../functions/api/contact.js";
+import {
+  CONTACT_RECIPIENT,
+  MAX_EMAIL_LENGTH,
+  MAX_MESSAGE_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_ORG_LENGTH,
+  MIN_MESSAGE_LENGTH,
+  MIN_NAME_LENGTH,
+  NEED_OPTIONS,
+  SUBJECT_PREFIX,
+} from "../functions/api/_contact.js";
 
 const PAGE_ORIGIN = "https://www.datawego.nl";
 const ENDPOINT = `${PAGE_ORIGIN}/api/contact`;
@@ -62,20 +74,23 @@ function kvBinding() {
 
 /**
  * Stub the two networks the Function talks to, and record what it sent.
- * `reply` steers the siteverify answer; `resendStatus` steers the provider.
+ * `reply` and `siteverifyStatus` steer the confirmation, `resendStatus` steers the
+ * provider, and `throwOn` names whichever of the two is having an outage.
  */
-function stubNetwork({ reply, resendStatus = 200 } = {}) {
+function stubNetwork({ reply, resendStatus = 200, siteverifyStatus = 200, throwOn = [] } = {}) {
   const calls = { siteverify: [], resend: [] };
   const original = globalThis.fetch;
   globalThis.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
     if (url === SITEVERIFY) {
       calls.siteverify.push({ form: new URLSearchParams(init.body ?? ""), headers: init.headers });
+      if (throwOn.includes("siteverify")) throw new Error("siteverify could not be reached");
       const result = await (typeof reply === "function" ? reply() : reply ?? { success: true, hostname: "www.datawego.nl" });
-      return jsonResponse(200, result);
+      return jsonResponse(siteverifyStatus, result);
     }
     if (url === RESEND) {
       calls.resend.push({ body: JSON.parse(init.body), headers: new Headers(init.headers ?? {}) });
+      if (throwOn.includes("resend")) throw new Error("resend could not be reached");
       return resendStatus === 200
         ? jsonResponse(200, { id: "email_1" })
         : jsonResponse(resendStatus, { statusCode: String(resendStatus), name: "validation_error", message: "rejected" });
@@ -88,6 +103,28 @@ function stubNetwork({ reply, resendStatus = 200 } = {}) {
       globalThis.fetch = original;
     },
   };
+}
+
+/** The throttle's own worst day: every read throws. */
+function unavailableKv() {
+  return {
+    async get() {
+      throw new Error("kv is having a bad day");
+    },
+    async put() {
+      throw new Error("kv is having a bad day");
+    },
+  };
+}
+
+/** An HTML attribute value, as the browser would hand it to a script. */
+function decodeEntities(value) {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
 }
 
 function jsonResponse(status, payload) {
@@ -109,6 +146,11 @@ async function send(payload, { context = {}, ... requestOptions } = {}) {
     ...(context.network ?? {}),
     ...(context.reply === undefined ? {} : { reply: context.reply }),
   });
+  const logs = [];
+  const originalError = console.error;
+  console.error = (...args) => {
+    logs.push(args.map(String).join(" "));
+  };
   try {
     const response = await onRequestPost({
       request: request(payload, requestOptions),
@@ -116,8 +158,9 @@ async function send(payload, { context = {}, ... requestOptions } = {}) {
       waitUntil() {},
       next: async () => Response.error(),
     });
-    return { response, calls: network.calls };
+    return { response, calls: network.calls, logs };
   } finally {
+    console.error = originalError;
     network.restore();
   }
 }
@@ -234,6 +277,24 @@ test("the confirmation must name the host that served the page", async () => {
   }
 });
 
+/**
+ * Both sides of the hostname comparison can come back null: an IP-literal host
+ * (which no real deployment serves, but every dev box does) is not a hostname the
+ * pattern recognises, and siteverify omits the field for a token minted elsewhere.
+ * Two nulls must not read as an agreement, or the gate opens for the whole family.
+ */
+test("a host that is not a hostname cannot open the gate", async () => {
+  for (const hostname of [undefined, "", "[2001:db8::1]", "!!!", "::1"]) {
+    const { response, calls } = await send(validPayload(), {
+      url: "http://[::1]:8788/api/contact",
+      origin: "http://[::1]:8788",
+      context: { reply: { success: true, hostname } },
+    });
+    assert.equal(response.status, 400, `hostname ${String(hostname)}`);
+    assert.equal(calls.resend.length, 0, `hostname ${String(hostname)} never reaches the provider`);
+  }
+});
+
 test("six submissions from one visitor IP inside a minute: five send, the sixth waits", async () => {
   const limiter = kvBinding();
   const statuses = [];
@@ -319,4 +380,143 @@ test("a retried brief forwards the same idempotency key rather than minting one"
   assert.equal(second.response.status, 201);
   assert.equal(first.calls.resend[0].headers.get("Idempotency-Key"), submissionId);
   assert.equal(second.calls.resend[0].headers.get("Idempotency-Key"), submissionId);
+});
+
+/**
+ * Each guard has an arm for "I could not find out", and every one of those arms is
+ * a refusal — except the throttle, which is the deliberate exception, because a KV
+ * outage must not stop a valid enquiry. None of them is reachable from the response
+ * an honest visitor gets, so they are reachable here instead.
+ */
+test("a guard that cannot answer denies, except the throttle, which fails open", async () => {
+  const confirmationDown = await send(validPayload(), {
+    context: { network: { throwOn: ["siteverify"] } },
+  });
+  assert.equal(confirmationDown.response.status, 400, "an unreachable confirmation is not a confirmation");
+  assert.equal(confirmationDown.calls.siteverify.length, 1, "it tried once");
+  assert.equal(confirmationDown.calls.resend.length, 0);
+  assert.equal(confirmationDown.logs.length, 1, "and the reason is on the record");
+
+  const confirmationErrored = await send(validPayload(), {
+    context: { network: { siteverifyStatus: 503 } },
+  });
+  assert.equal(confirmationErrored.response.status, 400);
+  assert.equal(confirmationErrored.calls.resend.length, 0);
+  assert.match(confirmationErrored.logs.join("\n"), /503/, "the status Cloudflare gave is logged");
+
+  const sendDown = await send(validPayload(), {
+    context: { network: { throwOn: ["resend"] } },
+  });
+  assert.equal(sendDown.response.status, 503, "a provider that cannot be reached is not an acceptance");
+  assert.equal(sendDown.calls.resend.length, 1);
+  assert.equal(sendDown.logs.length, 1);
+
+  const throttleDown = await send(validPayload(), {
+    context: { env: { CONTACT_RATE_LIMIT: unavailableKv() } },
+  });
+  assert.equal(throttleDown.response.status, 201, "a broken counter does not block a valid enquiry");
+  assert.equal(throttleDown.calls.resend.length, 1);
+});
+
+test("an omitted or blank organisation is a blank in the brief, not a bad request", async () => {
+  for (const org of ["", undefined, null]) {
+    const { response, calls } = await send(validPayload({ org }));
+    assert.equal(response.status, 201, `org ${String(org)} is a valid answer`);
+    assert.equal(calls.resend.length, 1);
+    assert.ok(
+      calls.resend[0].body.text.includes("Organisation: —"),
+      `org ${String(org)} renders as an em dash rather than "undefined"`
+    );
+  }
+});
+
+/**
+ * "Never fail quietly" is two halves: the visitor sees a sentence, and the mailbox
+ * owner sees a line. The second half is what makes an unset secret findable, and it
+ * must hold without ever printing the token or the address it is refusing.
+ */
+test("every refusal leaves a log line that names neither token nor address", async () => {
+  const token = validPayload().turnstileToken;
+  const cases = [
+    await send(validPayload(), { context: { env: { TURNSTILE_SECRET: undefined } } }),
+    await send(validPayload(), { context: { network: { throwOn: ["siteverify"] } } }),
+    await send(validPayload(), { context: { network: { siteverifyStatus: 500 } } }),
+    await send(validPayload(), { context: { env: { RESEND_API_KEY: undefined } } }),
+    await send(validPayload(), { context: { network: { resendStatus: 422 } } }),
+    await send(validPayload(), { context: { network: { throwOn: ["resend"] } } }),
+  ];
+
+  for (const { logs } of cases) {
+    const joined = logs.join("\n");
+    assert.ok(logs.length >= 1, `one of these is logged: ${JSON.stringify(logs)}`);
+    assert.equal(joined.includes(token), false, "the challenge token never reaches a log");
+    assert.equal(joined.toLowerCase().includes("ana@"), false, "nor does the visitor's address");
+    assert.equal(joined.includes("re_test_key"), false, "nor the provider key");
+    assert.equal(joined.includes("1x0000000000000000000000000000000AA"), false, "nor the Turnstile secret");
+  }
+});
+
+/**
+ * The page and the Function hold the same agreement in two copies, because a
+ * Function cannot import from an HTML file: the vocabulary of needs, the subject it
+ * builds, the one mailbox, and the bounds each field may carry. Nothing but a
+ * comment ties them today, so this is the line that stops the pair drifting apart —
+ * a seventh <option>, a reworded subject, or a maxlength that outgrows its MAX_*
+ * bound makes every honest submit fail, and the suite would stay green without it.
+ */
+test("the page keeps the send agreement identical to the Function's", () => {
+  const page = readFileSync(new URL("../datawego-company-site.html", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../functions/api/contact.js", import.meta.url), "utf8");
+
+  const select = page.match(/<select[^>]*id="f-need"[^>]*>([\s\S]*?)<\/select>/);
+  assert.ok(select, "the page has a #f-need select");
+  const optionValues = [...select[1].matchAll(/<option[^>]*\bvalue="([^"]*)"/g)].map(([, raw]) =>
+    decodeEntities(raw)
+  );
+  assert.equal(optionValues.length, NEED_OPTIONS.length, "one option per allowed need");
+  assert.deepEqual([...optionValues].sort(), [...NEED_OPTIONS].sort(), "the need vocabulary is the same list");
+
+  const postedNeed = page.match(/need:\s*el\["need"\]\.value/);
+  assert.ok(postedNeed, "the page posts the option's value, not its translated label");
+
+  const subject = page.match(/var subject = "([^"]*)"\s*\+\s*v\.need/);
+  assert.ok(subject, "the page builds a subject line");
+  assert.equal(subject[1], SUBJECT_PREFIX, "the manual subject matches the delivered one word for word");
+
+  const mailto = page.match(/"mailto:([^"?]+)\?/);
+  assert.ok(mailto, "the page offers a direct address");
+  assert.equal(mailto[1], CONTACT_RECIPIENT, "and it is the same mailbox the Function sends to");
+
+  const maxlengths = {
+    "f-name": MAX_NAME_LENGTH,
+    "f-email": MAX_EMAIL_LENGTH,
+    "f-org": MAX_ORG_LENGTH,
+    "f-msg": MAX_MESSAGE_LENGTH,
+  };
+  for (const [id, bound] of Object.entries(maxlengths)) {
+    const field = page.match(new RegExp(`id="${id}"[^>]*maxlength="(\\d+)"`));
+    assert.ok(field, `#${id} caps its input`);
+    assert.equal(
+      Number(field[1]),
+      bound,
+      `#${id} allows exactly as much as the Function will accept`
+    );
+  }
+
+  const minimums = new Map(
+    [...page.matchAll(/id: "(f-name|f-msg)"[^\n]*?\.length >= (\d+)/g)].map(([, id, n]) => [id, Number(n)])
+  );
+  assert.equal(minimums.get("f-name"), MIN_NAME_LENGTH, "#f-name asks for as little as the Function does");
+  assert.equal(minimums.get("f-msg"), MIN_MESSAGE_LENGTH, "#f-msg asks for as little as the Function does");
+
+  const allowlist = route.match(/const FIELD_ALLOWLIST = Object\.freeze\(\[([\s\S]*?)\]\)/);
+  assert.ok(allowlist, "the Function names the fields it accepts");
+  const accepted = [...allowlist[1].matchAll(/"([^"]+)"/g)].map(([, key]) => key);
+  const body = page.match(/body: JSON\.stringify\(\{([\s\S]*?)\}\)/);
+  assert.ok(body, "the page names the body it posts");
+  const sent = [...body[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\s*:/gm)].map(([, key]) => key);
+  assert.ok(sent.length > 0, "and it is not empty");
+  for (const key of sent) {
+    assert.ok(accepted.includes(key), `#${key} is posted but not on the allowlist, so every send would 400`);
+  }
 });

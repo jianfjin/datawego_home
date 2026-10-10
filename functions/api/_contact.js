@@ -15,7 +15,7 @@ export const SUBJECT_PREFIX = "Data enquiry — ";
 
 export const MIN_NAME_LENGTH = 2;
 export const MAX_NAME_LENGTH = 160;
-const MAX_EMAIL_LENGTH = 320;
+export const MAX_EMAIL_LENGTH = 320;
 export const MAX_ORG_LENGTH = 160;
 export const MIN_MESSAGE_LENGTH = 12;
 export const MAX_MESSAGE_LENGTH = 4000;
@@ -107,7 +107,11 @@ export async function parsePublicJson(request) {
  * let datawego.nl.attacker.tld through.
  */
 export async function verifyTurnstile(request, env, token) {
-  if (!env.TURNSTILE_SECRET || typeof token !== "string" || token.length < 10) return false;
+  if (!env.TURNSTILE_SECRET) {
+    console.error("contact: TURNSTILE_SECRET is unset, so every enquiry is refused");
+    return false;
+  }
+  if (typeof token !== "string" || token.length < 10) return false;
 
   const body = new URLSearchParams({
     secret: env.TURNSTILE_SECRET,
@@ -117,11 +121,18 @@ export async function verifyTurnstile(request, env, token) {
 
   try {
     const response = await fetch(SITEVERIFY_URL, { method: "POST", body });
-    if (!response.ok) return false;
+    if (!response.ok) {
+      console.error(`contact: siteverify answered ${response.status}`);
+      return false;
+    }
     const result = await response.json();
     if (result?.success !== true) return false;
-    return normalizeHostname(result.hostname) === servingHost(request);
-  } catch {
+    // Two nulls are not an agreement: an IP-literal host normalises to null, and
+    // siteverify omits the field for a token minted on another host.
+    const confirmed = normalizeHostname(result.hostname);
+    return confirmed !== null && confirmed === servingHost(request);
+  } catch (error) {
+    console.error(`contact: siteverify could not be reached (${error?.message ?? "unknown error"})`);
     return false;
   }
 }
@@ -180,7 +191,11 @@ export async function limitByIp(request, env) {
  * the visitor's address.
  */
 export async function sendResend(env, { to, from, replyTo, subject, text, idempotencyKey }) {
-  if (!env.RESEND_API_KEY || !from) return false;
+  if (!env.RESEND_API_KEY) {
+    console.error("contact: RESEND_API_KEY is unset, so every enquiry is refused");
+    return false;
+  }
+  if (!from) return false;
 
   try {
     const response = await fetch(RESEND_URL, {

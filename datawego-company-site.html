@@ -1772,6 +1772,9 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   var widget = "loading";    /* loading | ready | failed */
   var submissionId = "";     /* one per brief, so a retry is the same send */
   var widgetInstance = null;
+  var flowGen = 0;         /* a replaced brief retires the answer its send is waiting for */
+  var sendAbort = null;    /* the POST in flight, so "edit answers" can call it back */
+  var tokenSpent = false;  /* a token that has been presented cannot be presented again */
 
   function newId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -1855,6 +1858,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     var field = tokenField();
     if (field) field.value = "";
     widget = "loading";
+    tokenSpent = false;
     if (widgetInstance && window.turnstile && typeof window.turnstile.reset === "function") {
       try { window.turnstile.reset(widgetInstance); return; } catch (e) { widgetInstance = null; }
     }
@@ -1876,6 +1880,20 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     focusStatus();
   }
 
+  /* a brief the visitor went back to edit is not the brief a send is answering.
+     Call that send back, and retire its number, so an answer that arrives anyway
+     is dropped instead of painted onto the new brief. Edit answers is the one way
+     to be here while a POST is still out: the button stays live precisely so a
+     stalled send never traps the visitor, and a second brief sent from the first
+     screen would put two enquiries — two idempotency keys — in the mailbox. */
+  function abandonSend() {
+    flowGen += 1;
+    if (sendAbort) {
+      try { sendAbort.abort(); } catch (e) {}
+      sendAbort = null;
+    }
+  }
+
   function sendNow() {
     if (!canSend || state === "pending" || state === "sent") return;
 
@@ -1883,9 +1901,17 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     var token = field ? field.value : "";
     if (!token) { failWith(widget === "failed" ? S.widgetFailed : S.widgetPending); return; }
     ensureId();
+    /* from here the brief is leaving with this token, so the next brief has to be
+       challenged again rather than replay the one a browser tab already spent */
+    tokenSpent = true;
 
     var v = values();
     var trap = form.elements.website ? form.elements.website.value : "";
+    var generation = flowGen;
+    /* without AbortController the number alone still retires the answer, which is
+       the weaker of the two guards rather than a page that stops responding */
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    sendAbort = controller;
     state = "pending";
     setStatus(S.sending);
     paint();
@@ -1893,6 +1919,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     fetch("/api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller ? controller.signal : null,
       body: JSON.stringify({
         name: v.name,
         email: v.email,
@@ -1904,12 +1931,16 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
         website: trap
       })
     }).then(function (response) {
+      if (generation !== flowGen) return;
+      sendAbort = null;
       /* the Function answers each gate with its own status; a status we did not
          design for means the request never became an enquiry, so it is the
          unreachable sentence and not a silent success */
       if (response.ok && response.status === 201) { markSent(); return; }
       failWith(REFUSAL[response.status] || S.unreachable);
     }, function () {
+      if (generation !== flowGen) return;
+      sendAbort = null;
       failWith(S.unreachable);
     });
   }
@@ -1925,7 +1956,11 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     ensureId();
     if (!canSend) return;
     if (state === "idle") setStatus(S.composed);
-    startWidget();
+    /* a replayed token is refused outright, so a brief that follows a send gets
+       a fresh challenge — but only where the box can be seen. Renewing it behind
+       the "sent" sentence, in a container the panel has hidden, is how a widget
+       ends up never coming back; a send cannot be pressed from there anyway. */
+    if (tokenSpent && state !== "sent") resetWidget(); else startWidget();
     paint();
   }
 
@@ -1938,8 +1973,9 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     });
     if (firstBad) { firstBad.focus(); return; }
     /* a brief that already arrived is not the same brief: start a new one, so a
-       second send cannot be swallowed by the provider's idempotency key */
-    if (state === "sent") { state = "idle"; submissionId = newId(); resetWidget(); }
+       second send cannot be swallowed by the provider's idempotency key. The
+       challenge itself is renewed by compose(), a few lines below. */
+    if (state === "sent") { state = "idle"; submissionId = newId(); }
     compose();
     if (canSend) sendBtn.focus();
   });
@@ -1947,13 +1983,15 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   if (sendBtn) sendBtn.addEventListener("click", sendNow);
 
   document.getElementById("brief-edit").addEventListener("click", function () {
+    abandonSend();
     out.hidden = true;
     form.querySelectorAll(".form-grid, .row-between").forEach(function (n) { n.style.display = ""; });
     state = "idle";
     statusEN = "";
     submissionId = newId();
-    /* the widget stays as it is: refresh-expired renews a spent token by itself,
-       and re-rendering into a hidden box is how a widget ends up never coming back */
+    /* the widget is deliberately untouched here: re-rendering into a box that is
+       still hidden is how a widget ends up never coming back. compose() renews a
+       spent challenge once the brief is back on screen. */
     paint();
     document.getElementById("f-name").focus();
   });
