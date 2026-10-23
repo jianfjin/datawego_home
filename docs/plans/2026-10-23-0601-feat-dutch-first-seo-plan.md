@@ -136,7 +136,9 @@ W=https://www.datawego.nl
 curl -sI https://datawego.nl/        | grep -qi '^HTTP/2 301'                 # apex redirects
 curl -s  $W/en/                      | grep -o '<html lang="[a-z]*"'          # en
 curl -s  $W/                         | grep -c 'dataplatform'                 # >0: Dutch in the served HTML
+curl -s  $W/                         | grep -c 'mailto:info@datawego.nl'       # 2 — footer and contact block, in the HTML rather than after a script runs
 curl -sI https://datawego.pages.dev/ | grep -vi 'x-robots'                    # no header; canonical does the work
+curl -sI https://<hash>.datawego.pages.dev/ | grep -i '^x-robots-tag'          # noindex — the platform's own, for a preview alias
 
 # R3/R4  the three places that name an address agree — walked from the sitemap, not compared to one page
 for u in $(curl -s $W/sitemap.xml | grep -o '<loc>[^<]*' | cut -c6-); do
@@ -151,12 +153,15 @@ done   # each address canonicals to itself; both variants list the same pair, x-
 curl -s -o /dev/null -w '%{http_code} %{content_type}\n' $W/nope-xyz   # 404, with the Dutch 404 page in the body
 curl -s -o /dev/null -w '%{content_type}\n' $W/robots.txt              # not text/html
 curl -s -o /dev/null -w '%{content_type}\n' $W/sitemap.xml             # not text/html
-curl -s  $W/robots.txt | wc -c                     # 611 B (565 authored + the build's Sitemap: line), not 119039
-curl -s  $W/robots.txt | grep -i sitemap           # the absence of this line is what made it a homepage
+curl -s  $W/robots.txt | wc -c                     # 611 B (565 authored + the build's Sitemap: line). Measured at the
+                                                   # stage-1 deploy: 3,287 B, because Cloudflare's managed content-signals
+                                                   # block is still in front of it (Dashboard ②). The claim that matters is
+                                                   # unchanged — our 611 B are the tail, and 119039 of homepage is gone.
+curl -s  $W/robots.txt | tail -3 | grep -i sitemap # the line whose absence made it a homepage, and ours, not the injected one
 curl -s  $W/sitemap.xml | head -1                  # <?xml …
 
 # R8  a Diagram page is reachable, noindexed, and says nothing about the firm
-curl -s -o /dev/null -w '%{http_code}\n' $W/docs/pharm-platform.html   # 200 — it stays linked
+curl -s -o /dev/null -w '%{http_code}\n' $W/docs/pharm-platform.html   # 200 — it stays linked   # measured: 308 -> /docs/pharm-platform, which answers 200 (see the note below)
 curl -s  $W/docs/pharm-platform.html | grep -c 'noindex, follow'       # 1
 curl -s  $W/docs/pharm-platform.html | grep -c 'application/ld+json'  # 0 — ADR 0011's U7 amendment
 
@@ -189,6 +194,28 @@ node --test tests/contact.test.mjs   # R14's guard: CRLF and `Subject:` through 
 #      that a crafted value changes nothing; that a real Google visitor reads
 #      `referrer=https://www.google.com` is only answerable in the delivered mail.
 ```
+
+**Measured at the stage-1 deploy, 2026-10-23:** every line above was run against
+`https://www.datawego.nl`, and five facts came back that the file did not hold.
+The Diagram pages do not answer at the address the repository declares: Pages 308s
+`/docs/<name>.html` → `/docs/<name>` and 308s the trailing-slash form to the same
+bare address, so the only 200 is the bare one, and every Diagram link in the nav and
+the footer pays a redirect. ADR 0005's `form: "asset"` exception was written from the
+`.html` addresses' age rather than from what answers, which is the same class of
+mistake the plan cites the reference project for, mirrored. Until that is decided, the
+R8 lines need `-L`. `robots.txt` arrives as 3,287 B with Cloudflare's managed
+content-signals block in front of our 611 B, which also gives that file its own
+`max-age=14400` rather than the `/*` line (Dashboard ②). The apex still answers 200
+instead of 301 (Dashboard ①). And the served pages do not carry the `mailto:` links this
+build wrote: Cloudflare's Email Address Obfuscation rewrites both of them into
+`/cdn-cgi/l/email-protection#…` and adds `email-decode.min.js`, so the address exists for a
+reader only after JavaScript runs. It leaves the graph's `"email"` alone, because the feature
+rewrites anchors rather than JSON strings, and it is a Scrape Shield toggle rather than
+anything in this repository (Dashboard ⑥). And Dashboard ③ needed nothing: an unknown path is
+already 404 with the Dutch page, so Pages' not-found behaviour was never pinned to
+`index.html` — the assumption is closed. Everything else above passed as written: the
+canonical/hreflang walk, the two content-types, the header block on `/*` and on all
+eleven named assets, `og:image` at its hashed URL, and the graph's four counts.
 
 **Made 2026-10-23, at U7:** every line here was run against a file server over `dist/` before it
 was trusted, which corrected four things. The sitemap walk replaces a `comm` of `loc`s against one
