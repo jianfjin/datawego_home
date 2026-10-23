@@ -113,7 +113,7 @@ curl -s  https://www.datawego.nl/        | grep -c 'dataplatform'          # >0,
 curl -sI https://datawego.pages.dev/     | grep -vi 'x-robots'            # no header; canonical does the work
 # R7  the defect, gone
 curl -s  -o /dev/null -w '%{http_code} %{content_type}\n' https://www.datawego.nl/nope-xyz   # 404 text/html
-curl -s  https://www.datawego.nl/robots.txt | wc -c                                          # ~200 B, not 119039
+curl -s  https://www.datawego.nl/robots.txt | wc -c                                          # 611 B (565 authored + the build's Sitemap: line), not 119039
 curl -sS https://www.datawego.nl/robots.txt | grep -i sitemap
 curl -s  https://www.datawego.nl/sitemap.xml | head -1                                      # <?xml …
 # R3/R4  agreement between the three places that name an address
@@ -129,14 +129,14 @@ printf 'x' | node --test tests/contact.test.mjs   # plus the new injection guard
 | # | Where | Do | Verified by |
 |---|---|---|---|
 | ① | Cloudflare Pages → datawego → Settings → Domains, on the `datawego.nl` row | apex→www redirect ON. `docs/datawego.nl.txt` shows both `datawego.nl` and `www.datawego.nl` already CNAME to `datawego.pages.dev`, so **no DNS record changes**: this is the Pages toggle, and if it is absent on this plan a zone Redirect Rule does the same job | `curl -sI https://datawego.nl/ \| grep -i '^location'` → `https://www.datawego.nl/` |
-| ② | Cloudflare zone → bot/Content-Signals managed robots | **disable** the managed robots.txt injection | `robots.txt` size ~200 B, `Content-Signal` gone |
+| ② | Cloudflare zone → bot/Content-Signals managed robots | **disable** the managed robots.txt injection | `robots.txt` size 611 B, `Content-Signal` gone |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
 | ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem | it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
 
 ## Definition of Done
 
-Dutch prose is in the served HTML of `/` and counts as a real page to Google, Bing and a retrieval crawler; one address per variant answers at www with a matching canonical, sitemap and hreflang set; an unknown URL says 404 in Dutch; `robots.txt` is 200 bytes and names the sitemap; `dist/` cannot be stale and a page cannot be half-Dutch without failing the build; the hero and logo cost under a tenth of what they cost today; and an Organic enquiry is identifiable in the mailbox by its `Attribution:` line.
+Dutch prose is in the served HTML of `/` and counts as a real page to Google, Bing and a retrieval crawler; one address per variant answers at www with a matching canonical, sitemap and hreflang set; an unknown URL says 404 in Dutch; `robots.txt` is 611 bytes and names the sitemap; `dist/` cannot be stale and a page cannot be half-Dutch without failing the build; the hero and logo cost under a tenth of what they cost today; and an Organic enquiry is identifiable in the mailbox by its `Attribution:` line.
 
 ## System-Wide Impact
 
