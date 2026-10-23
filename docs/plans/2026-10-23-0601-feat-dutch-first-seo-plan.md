@@ -107,6 +107,16 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
   `KvK-nummer`, and two spellings of one registry is how a pair stops being
   checkable, so `tests/seo-graph.test.mjs` now compares the number in both.
 - **U8. Enquiry attribution.** Allowlisted field, body-only, guard test (R14).
+  **Made 2026-10-23:** three fields, not one — `referrer`, `page`, `variant` — each
+  validated on its own and joined into a single `Attribution:` line, because a slot
+  that silently disappears is indistinguishable from a page that stopped sending it.
+  `page` is the address the brief was filled in on rather than the address the visitor
+  landed on; the site keeps no session, so "landing" is not knowable (ADR 0010's
+  amendment). Attribution is read after the gates and never among them, so no odd
+  referrer ever refuses an enquiry. The two variant names are copied into
+  `functions/api/_contact.js` and held against `LANGS` by a test, and the page sends
+  `document.documentElement.lang` rather than a literal, so the line is identical in
+  both variants and nothing in it is a sentence.
 - **Ship:** deploy, then run every assertion under Verification Contract. Then dashboard items ①②③.
 
 ### Stage 2 — structure
@@ -172,7 +182,12 @@ curl -s $W/en/ | grep -c '"@type": "WebSite"'                       # 1
 # R15  the build refuses a half-translated page and a dist/ that has fallen behind
 node build.mjs --check && echo "dist current"
 node --test
-printf 'x' | node --test tests/contact.test.mjs   # plus the new injection guard (U8)
+node --test tests/contact.test.mjs   # R14's guard: CRLF and `Subject:` through all three slots
+
+# R14  the last mile is the mailbox, and no curl can reach it: send one enquiry from
+#      https://www.datawego.nl/ and read its Attribution line. What is asserted above is
+#      that a crafted value changes nothing; that a real Google visitor reads
+#      `referrer=https://www.google.com` is only answerable in the delivered mail.
 ```
 
 **Made 2026-10-23, at U7:** every line here was run against a file server over `dist/` before it

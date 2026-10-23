@@ -26,3 +26,31 @@ minutes and left". The two ends are all there is — Google Search Console's que
 and impressions on one side, and the Attribution line on each accepted enquiry on
 the other. Reversing this means a consent banner, and a banner is a layer of
 layout shift, script and drop-off paid on every page, for data the mailbox already supplies.
+
+## Amendment at U8: what "the landing path" can honestly mean
+
+The field was described above as the address the visitor landed on. A page cannot
+know that. There is no session and no storage in this design — that is the cost this
+ADR agreed to pay when it declined the funnel — so the only address a browser can
+state at the moment of sending is **the address the brief was filled in on**. That is
+what `page=` holds, and the distinction is worth writing down because "landing" would
+be a claim the deployment cannot support: a visitor who arrived at
+`/docs/ehr-platform-architecture-with-prepass.html`, clicked through and wrote from
+`/` produces `page=/`, which is the truth available.
+
+Three things were settled while the field was built:
+
+- Each part is validated **alone**, and a part that fails prints as `unknown` rather
+  than being dropped. A line that omits a slot cannot be told apart from a page that
+  stopped sending it, which is the difference between a gap in the data and a silent
+  change in the code.
+- Nothing in it may **refuse** an enquiry. Attribution is read after every gate and
+  before the send, never among the gates.
+- The page reduces `document.referrer` to its origin, and the Function refuses a URL
+  that still carries a path rather than trimming it. Trimming would mean deployed code
+  guessing at what the field was for.
+
+The two variant names are written again in `functions/api/_contact.js` rather than
+imported from the route table — a deployed Worker should not need build input for one
+two-value check — so `tests/contact.test.mjs` holds that copy against `LANGS`, which
+is what makes it a copy under test instead of a second answer (ADR 0005).

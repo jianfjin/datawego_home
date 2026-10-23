@@ -149,6 +149,17 @@ lets traffic through rather than blocking it.
 `datawego.pages.dev` must also be an authorized hostname on widget
 `0x4AAAAAAE_LDKoiHQlhtMM2`, alongside `datawego.nl` and `localhost`.
 
+**What the mailbox learns about how an enquiry arrived.** Each enquiry carries one
+`Attribution:` line (`referrer=… page=… variant=…`), built by the page and read off
+the document rather than written out in code: an origin, the address the brief was
+filled in on, and the variant the visitor read (ADR 0010). That line is the whole
+measurement plan — no analytics, no consent banner — which is why its three values
+are validated one at a time and land in the message body and nowhere else. A part
+the Function cannot parse is printed as `unknown`; an odd referrer never refuses an
+enquiry somebody wrote. `tests/contact.test.mjs` sends CRLF- and `Subject:`-carrying
+values through all three slots and asserts the delivered request is byte for byte
+the request of an unattributed enquiry.
+
 ## Implementation notes
 
 `docs/DESIGN-HANDOFF.md` is the source of truth for porting this prototype to

@@ -20,6 +20,20 @@ export const MAX_ORG_LENGTH = 160;
 export const MIN_MESSAGE_LENGTH = 12;
 export const MAX_MESSAGE_LENGTH = 4000;
 export const MAX_SUBMISSION_ID_LENGTH = 128;
+export const MAX_REFERRER_LENGTH = 160;
+export const MAX_PAGE_PATH_LENGTH = 200;
+
+/**
+ * The two Language variants, as the send path knows them.
+ *
+ * `src/site/routes.mjs` holds the site's list, and the Worker that answers
+ * POST /api/contact does not read it: the route table is build input, and the
+ * table also names planned addresses and Diagram pages, which the send path has
+ * no business knowing. So the two words are named again here, and
+ * `tests/contact.test.mjs` holds this list against `LANGS` on every run, which is
+ * what makes it a copy under test rather than a second answer (ADR 0005).
+ */
+export const VARIANTS = Object.freeze(["nl", "en"]);
 
 /**
  * The English `value` attributes of #f-need. Labels translate, values do not, so one
@@ -82,6 +96,57 @@ export function bounded(value, min, max) {
   if (typeof value !== "string") return null;
   const result = value.trim();
   return result.length >= min && result.length <= max ? result : null;
+}
+
+/**
+ * Where an enquiry came from, in the only form the page is allowed to claim.
+ *
+ * An empty referrer is not missing information, it is a fact: nobody referred
+ * them, so `direct`. Anything else has to be an origin — a scheme and a host, no
+ * path, no query, no credentials — because `document.referrer` is a full URL and
+ * the browser only ever tells us which site it came from anyway. A crafted
+ * string that is not an origin becomes null, and null is printed as `unknown`.
+ */
+export function attributionReferrer(value) {
+  if (typeof value !== "string") return null;
+  if (value === "") return "direct";
+  if (value.length > MAX_REFERRER_LENGTH) return null;
+  return /^https?:\/\/[a-z0-9]([a-z0-9._-]*[a-z0-9])?(:\d+)?$/.test(value) ? value : null;
+}
+
+/**
+ * The address the brief was filled in on: a path on this host, never a URL.
+ *
+ * The character set is the guard. It excludes CR, LF, space, `=`, `?`, `#` and
+ * `\\`, so a value can neither end the Attribution line early nor begin a line
+ * that looks like one of the fields above it. `https://…` is refused here rather
+ * than trimmed, because a page that sends a URL for its own address has changed
+ * what the field means.
+ */
+export function attributionPage(value) {
+  if (typeof value !== "string" || value.length > MAX_PAGE_PATH_LENGTH) return null;
+  if (!/^\/[a-z0-9._-]*(\/[a-z0-9._-]*)*$/.test(value)) return null;
+  // The charset already keeps out everything a mail transport reads as syntax, so
+  // the lie left to tell is a path that is not this site's: a dot segment resolves
+  // somewhere else, and no address the generator writes contains one (ADR 0005).
+  if (value.split("/").some((segment) => segment === ".." || segment === ".")) return null;
+  return value;
+}
+
+/** Which variant the visitor read, or null. Stated by the document's own `lang`. */
+export function attributionVariant(value) {
+  return typeof value === "string" && VARIANTS.includes(value) ? value : null;
+}
+
+/**
+ * The mailbox's one sentence about how an enquiry arrived (ADR 0010).
+ *
+ * `unknown` is a value in it, never an omission: an enquiry that loses all three
+ * parts still says that nothing could be read, which is different from a line
+ * that is not there and leaves the reader guessing about the send path.
+ */
+export function attributionLine({ referrer, page, variant }) {
+  return `Attribution: referrer=${referrer ?? "unknown"} page=${page ?? "unknown"} variant=${variant ?? "unknown"}`;
 }
 
 export function allowedKeys(value, keys) {

@@ -18,6 +18,10 @@
 
 import {
   allowedKeys,
+  attributionLine,
+  attributionPage,
+  attributionReferrer,
+  attributionVariant,
   bounded,
   CONTACT_RECIPIENT,
   jsonNoStore,
@@ -46,6 +50,12 @@ const FIELD_ALLOWLIST = Object.freeze([
   "turnstileToken",
   "submissionId",
   "website",
+  // The three attribution fields (ADR 0010). A page that predates them still
+  // sends: an absent part reads `unknown`, and losing the sentence is a smaller
+  // loss than refusing an enquiry somebody wrote.
+  "referrer",
+  "page",
+  "variant",
 ]);
 
 // Built inside the handler: workerd forbids constructing a Response in global scope,
@@ -81,12 +91,22 @@ export const onRequestPost = async ({ request, env }) => {
     });
   }
 
+  /* Read after the gates, never before one: attribution describes the enquiry, and
+     nothing in it may decide whether the enquiry is delivered. Its values are
+     visitor-controlled, which is why they land in `text` and nowhere in `subject`,
+     `from`, `to` or `reply_to`. */
+  const attribution = attributionLine({
+    referrer: attributionReferrer(data.referrer),
+    page: attributionPage(data.page),
+    variant: attributionVariant(data.variant),
+  });
+
   const accepted = await sendResend(env, {
     to: CONTACT_RECIPIENT,
     from: env.CONTACT_FROM ?? `DataWeGo Website <${CONTACT_RECIPIENT}>`,
     replyTo: email,
     subject: `${SUBJECT_PREFIX}${need}`,
-    text: `Name: ${name}\nEmail: ${email}\nOrganisation: ${org ?? "—"}\nNeed: ${need}\n\n${message}`,
+    text: `Name: ${name}\nEmail: ${email}\nOrganisation: ${org ?? "—"}\nNeed: ${need}\n${attribution}\n\n${message}`,
     idempotencyKey: submissionId,
   });
 

@@ -10,8 +10,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { onRequestPost } from "../functions/api/contact.js";
+import { LANGS } from "../src/site/routes.mjs";
 import {
+  attributionLine,
+  attributionPage,
+  attributionReferrer,
+  attributionVariant,
   CONTACT_RECIPIENT,
+  VARIANTS,
   MAX_EMAIL_LENGTH,
   MAX_MESSAGE_LENGTH,
   MAX_NAME_LENGTH,
@@ -37,6 +43,11 @@ function validPayload(overrides = {}) {
     turnstileToken: ".skip-token-abcdefghijklmnop",
     submissionId: "11111111-1111-4111-8111-111111111111",
     website: "",
+    // what the page has posted since U8: an origin, the address the brief was
+    // filled in on, and the variant the visitor read (ADR 0010)
+    referrer: "https://www.google.com",
+    page: "/en/",
+    variant: "en",
     ...overrides,
   };
 }
@@ -519,6 +530,12 @@ test("the page keeps the send agreement identical to the Function's", () => {
   for (const key of sent) {
     assert.ok(accepted.includes(key), `#${key} is posted but not on the allowlist, so every send would 400`);
   }
+  // Both directions, because one of them loses the sentence in silence: a field on
+  // the allowlist that no page posts reads `unknown` on every enquiry forever, and
+  // nothing in the mailbox says the page stopped sending it (U8).
+  for (const key of accepted) {
+    assert.ok(sent.includes(key), `${key} is on the allowlist and posted by no page, so it is a permanent unknown`);
+  }
 });
 
 /**
@@ -623,4 +640,133 @@ test("the page hands turnstile.render only values api.js will accept", () => {
     { reference: "TS_SITEKEY" },
     "the render call passes that name, so one edit reaches the widget"
   );
+});
+
+/* ── attribution (U8, ADR 0010, R14) ───────────────────────────────────────
+   The one place in this project where a visitor's string is put inside an
+   outbound email, so the interesting assertions are the ones that keep it in the
+   body and out of everything a mail transport reads as syntax.
+──────────────────────────────────────────────────────────────────────────── */
+
+const ATTRIBUTION_FIELDS = {
+  subject: `${SUBJECT_PREFIX}Data platform`,
+  from: "DataWeGo Website <info@datawego.nl>",
+  to: [CONTACT_RECIPIENT],
+  reply_to: "ana@clinic-example.com",
+};
+
+test("an enquiry carries its attribution as one line of the body, in order, above the message", async () => {
+  const { response, calls } = await send(validPayload());
+  assert.equal(response.status, 201);
+
+  const [sent] = calls.resend;
+  const lines = sent.body.text.split("\n");
+  assert.deepEqual(lines.slice(0, 5), [
+    "Name: Ana Ruiz",
+    "Email: ana@clinic-example.com",
+    "Organisation: Clinic Nine",
+    "Need: Data platform",
+    "Attribution: referrer=https://www.google.com page=/en/ variant=en",
+  ]);
+  assert.equal(lines[5], "", "the message still starts after a blank line");
+  assert.ok(lines.slice(6).join("\n").includes("unify three EHR extracts"), "and nothing was taken out of it");
+
+  // Attribution is a description of the enquiry, not a part of its envelope.
+  for (const [field, expected] of Object.entries(ATTRIBUTION_FIELDS)) {
+    assert.deepEqual(sent.body[field], expected, `${field} is the send path's own words`);
+    assert.ok(
+      !/google|referrer=|Attribution|\/en\//.test(JSON.stringify(sent.body[field])),
+      `${field} carries attribution, which is a visitor-controlled string in a header-shaped place`
+    );
+  }
+});
+
+test("what the page could not read is said as unknown, and a direct arrival is said as direct", async () => {
+  const cases = [
+    // An empty referrer is a fact rather than a gap: nobody referred this visitor.
+    { label: "no referrer", patch: { referrer: "" }, want: "referrer=direct" },
+    // The page sends an origin. A full search URL is what a browser calls
+    // document.referrer, and the Function will not guess where the origin ends.
+    { label: "a whole search URL as the referrer", patch: { referrer: "https://www.google.com/search?q=dataplatform" }, want: "referrer=unknown" },
+    { label: "a URL where a path belongs", patch: { page: "https://www.datawego.nl/en/" }, want: "page=unknown" },
+    { label: "a path climbing out of the site", patch: { page: "/en/../../etc/passwd" }, want: "page=unknown" },
+    { label: "a variant the site does not have", patch: { variant: "de" }, want: "variant=unknown" },
+    // Two of three is still an answer, which is why the parts are validated alone.
+    { label: "one unreadable part", patch: { referrer: "ftp://files.example", page: "/docs/pharm-platform.html", variant: "nl" }, want: "page=/docs/pharm-platform.html variant=nl" },
+  ];
+
+  for (const { label, patch, want } of cases) {
+    const { response, calls } = await send(validPayload(patch));
+    assert.equal(response.status, 201, `${label}: attribution never refuses an enquiry`);
+    const [line] = calls.resend[0].body.text.split("\n").filter((l) => l.startsWith("Attribution:"));
+    assert.ok(line.includes(want), `${label}: ${line} does not carry ${want}`);
+  }
+});
+
+test("a crafted attribution stays inside the body, and adds no line to it", async () => {
+  const hostile = [
+    ["a newline and a subject", "https://a.example/\nSubject: pwn"],
+    ["a CRLF and a sender", "https://a.example\r\nFrom: postmaster@datawego.nl"],
+    ["a forged attribution line", "https://a.example/ ?x=\nAttribution: referrer=direct"],
+    ["an address of its own", "someone@example.com"],
+    ["an origin with nothing after it", "https://"],
+    ["a scheme that is not a site", "javascript:alert(1)"],
+    ["credentials inside the host", "https://info@datawego.nl@evil.example"],
+    ["a host to the length limit and past it", `https://${"a".repeat(200)}.example`],
+    ["a backslash", "https://a.example\\en\\"],
+    ["a CRLF with no scheme", "/en/\r\nNeed: Something else"],
+  ];
+
+  const named = { referrer: "referrer=https://www.google.com", page: "page=/en/", variant: "variant=en" };
+  const body = (slot) =>
+    `Name: Ana Ruiz\nEmail: ana@clinic-example.com\nOrganisation: Clinic Nine\nNeed: Data platform\n` +
+    `Attribution: ${["referrer", "page", "variant"].map((k) => (k === slot ? `${k}=unknown` : named[k])).join(" ")}\n\n` +
+    validPayload().message;
+
+  for (const [label, value] of hostile) {
+    for (const field of ["referrer", "page", "variant"]) {
+      const { response, calls } = await send(validPayload({ [field]: value }));
+      assert.equal(response.status, 201, `${label} in ${field}: a send that cannot be described is still a send`);
+      assert.equal(calls.resend.length, 1);
+
+      const [sent] = calls.resend;
+      assert.equal(sent.body.text, body(field), `${label} in ${field}: the body is not the body of an unknown attribution`);
+      for (const [name, expected] of Object.entries(ATTRIBUTION_FIELDS)) {
+        assert.deepEqual(sent.body[name], expected, `${label} in ${field} moved into ${name}`);
+      }
+      assert.ok(!JSON.stringify(sent.body).includes("Subject: pwn"), `${label}: a second Subject`);
+      assert.ok(!JSON.stringify(sent.body).includes("postmaster@"), `${label}: a forged sender`);
+    }
+  }
+});
+
+test("the variants the send path will name are still the site's variants", () => {
+  // ADR 0005's one list lives in the build, and a Pages Function does not read it.
+  // That makes this copy a second statement, which is exactly what the rest of the
+  // plan refuses — so it is asserted rather than trusted.
+  assert.deepEqual([...VARIANTS], [...LANGS], "the send path names a variant list the site does not have");
+  assert.ok(VARIANTS.includes("nl"), "Dutch owns the root (ADR 0001)");
+});
+
+test("the validators are the whole decision, so the line cannot be built without them", () => {
+  assert.equal(attributionReferrer(""), "direct");
+  assert.equal(attributionReferrer("https://www.google.com"), "https://www.google.com");
+  assert.equal(attributionReferrer("https://duckduckgo.com:443"), "https://duckduckgo.com:443");
+  assert.equal(attributionReferrer("https://www.google.com/en-GB/"), null);
+  assert.equal(attributionReferrer("HTTPS://WWW.GOOGLE.COM"), null, "an origin arrives from URL#origin, which lowercases; anything else is a claim");
+  assert.equal(attributionReferrer(null), null);
+  assert.equal(attributionReferrer(42), null);
+
+  assert.equal(attributionPage("/"), "/");
+  assert.equal(attributionPage("/en/data-platforms/"), "/en/data-platforms/");
+  assert.equal(attributionPage("/docs/pharm-platform.html"), "/docs/pharm-platform.html");
+  assert.equal(attributionPage("en/"), null, "a path without its slash is not this site's address form (ADR 0005)");
+  assert.equal(attributionPage("/en/#anchor"), null);
+  assert.equal(attributionPage("/%2e%2e/"), null);
+  assert.equal(attributionPage("/en/../secrets"), null);
+  assert.equal(attributionPage("/EN/"), null, "the addresses are lowercase");
+
+  assert.equal(attributionVariant("nl"), "nl");
+  assert.equal(attributionVariant("NL"), null);
+  assert.equal(attributionLine({ referrer: null, page: null, variant: null }), "Attribution: referrer=unknown page=unknown variant=unknown");
 });

@@ -1801,6 +1801,20 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     if (!submissionId) submissionId = newId();
   }
 
+  /* Attribution, for the mailbox and for nobody else (ADR 0010): where the visitor
+     came from, the address the brief was filled in on, and the variant they read.
+     All three are read off the document rather than written out here, because a
+     translated string would make a Dutch enquiry's line read differently from an
+     English one's, and a mailbox holds one vocabulary. The referrer is an origin
+     and no more — this page ships strict-origin-when-cross-origin, so a cross-site
+     referrer cannot carry a path even if asked. A part that will not parse is
+     called unknown by the Function, which is the one place these shapes are decided. */
+  function referrerOrigin() {
+    var raw = document.referrer;
+    if (!raw) return "";
+    try { return new URL(raw).origin; } catch (e) { return raw; }
+  }
+
   function tokenField() {
     return form.querySelector('[name="cf-turnstile-response"]');
   }
@@ -1946,7 +1960,10 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
         message: v.msg,
         turnstileToken: token,
         submissionId: submissionId,
-        website: trap
+        website: trap,
+        referrer: referrerOrigin(),
+        page: location.pathname,
+        variant: document.documentElement.lang
       })
     }).then(function (response) {
       if (generation !== flowGen) return;
