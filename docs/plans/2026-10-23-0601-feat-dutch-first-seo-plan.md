@@ -173,6 +173,38 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
 ### Stage 3 — words
 
 - **U10.** Draft 400–700 words × 4 Pages (English + Dutch from the same facts), owner's native review, then deploy the sitemap at 10 rows and request indexing (R16, R18).
+  **Made 2026-10-23, at U10 (copy shipped, owner's read still open):** the four Bodies carry prose
+  now — 83 sentences, in both languages, `var NL` grown to 285 keys, and the sitemap at the ten
+  rows R6 expects. `node --test` is 109 and `node tools/wordcount.mjs` reads:
+  dataplatforms 677 nl / 697 en, ai-oplossingen 669 / 700, cloud-en-enterprise-software 665 / 699,
+  zorg-en-life-sciences 636 / 651. The owner's native Dutch review is the part of this step the
+  repository cannot do, and R18's search-console work is the other.
+  Three promises the unit had to keep honest, rather than merely fill in. The first is the one
+  this line itself set: U9's guard forbade inventing prose, and it did it by requiring every
+  visible English string on a Page to be a string the home document already says. That assertion
+  cannot survive the copy it was holding back, so it was rewritten to what it always meant —
+  a rendered Page may say nothing its own Body did not write, nothing the chrome did not write,
+  and nothing but the clause — which is the line U10 changes deliberately, by name, rather than
+  by accident (it is now test 62).
+  The second is the ledger's. A key that only the home Page speaks is dead, and that is what
+  `sourceProblems` used to check; four Bodies now speak keys home never mentions, so the check
+  reads the home source together with the four Body sources, and a test proves the sibling list
+  is load-bearing rather than decorative: rename a key in a Body alone and the dictionary is
+  named as holding something nothing says.
+  The third is R16's, and it was wrong before it was measured. The budget was asserted with one
+  arithmetic and printed with another, and they disagreed by 93–99 words on all eight variants
+  — every Page whose copy passed failing the assertion. The cause is not prose: the home
+  document's header comment quotes the brand mark as `<b>Data</b><i>WeGo</i>`, and the test's
+  `<[^>]+>` tag-strip stops at the first `>` inside that comment, so its remaining ninety-odd
+  words arrive as something a visitor reads. The chrome carries the comment, so all four Pages
+  inherit it, and dataplatforms failed at 776 against a budget of 700 with 677 words of prose on
+  the page. The Page's own section markers were never involved — `── 4 · PRIJZEN` holds no
+  `>` and drops cleanly — which is what let it look like a copy problem as long as it did. The
+  arithmetic is now declared once, in `src/site/wordcount.mjs`, called by the guard and by
+  `tools/wordcount.mjs` alike: cut at `</head>` rather than pattern-match the whole document,
+  drop inline SVG, resolve entities; verified by a Body carrying 31 extra words of comment that
+  counts exactly what it counted before. An ai-oplossingen en sits at 700, on the ceiling rather
+  than under it — worth knowing before a well-meaning sentence is added.
 
 ## Verification Contract
 

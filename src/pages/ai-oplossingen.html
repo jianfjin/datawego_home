@@ -1,4 +1,4 @@
-<!-- The AI-powered solutions Page body. Same two rules as src/pages/dataplatforms.html. -->
+<!-- The AI-powered solutions Page body. Same rules as src/pages/dataplatforms.html. -->
 <section class="section" id="top" data-od-id="page-head">
   <div class="container stack" style="gap: var(--space-6);">
     <p class="eyebrow">Practice areas</p>
@@ -12,18 +12,83 @@
   </div>
 </section>
 
-<section class="section" id="proof" data-od-id="page-proof" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+<section class="section" id="standard" data-od-id="page-standard" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
   <div class="container stack" style="gap: var(--space-6);">
-    <h2 class="h2">Proof of work in each area.</h2>
-    <div class="feature card" data-od-id="page-case-swarm">
-      <h3 class="h3" style="margin-top: var(--space-2);">Marketing Research Swarm</h3>
-      <p>A LangGraph team of specialised research agents that plans, retrieves and synthesises market evidence. Retrieval-grounded agent selection keeps claims tied to sources, a shared blackboard keeps context lean between agents, and persistent caching of finished analyses cuts token cost.</p>
-      <div class="chip-row">
-      <span class="chip">LangGraph</span>
-      <span class="chip">RAG</span>
-      <span class="chip">Context engineering</span>
-            </div>
-      <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-marketing-research-swarm}}" target="_blank" rel="noopener">View architecture</a></p>
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">What earns a model its place</p>
+      <h2 class="h2">A model is a decision with a baseline.</h2>
+      <p>A model ships only against a decision someone makes, with a baseline to beat and a human review path when it is wrong.</p>
+      <p>That rule decides the architecture rather than the last phase of it. The evaluation harness is a component in the graph, not a report written afterwards, and the review path is a queue somebody owns.</p>
+      <p class="body-muted">It also decides what we decline to build. Where a deterministic map gives the same answer with no variance to defend, we build the map and leave the model out of the data path.</p>
     </div>
+  </div>
+</section>
+
+<section class="section" id="grounded" data-od-id="page-grounded">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Assistants and automation</p>
+      <h2 class="h2">Grounded, or it is a rumour.</h2>
+      <p>An assistant over your own documents is only useful when every claim can be pointed at something. So the retrieval layer is designed before the prompt is, and the answer carries its sources or does not arrive.</p>
+      <p>Whether the words come from a hosted model or one running on hardware you control is a deployment choice, not a design choice. We write the graph so either can answer, and so switching is a configuration change rather than a rebuild.</p>
+      <p>Context is a budget. What the agents have already learned is kept in one shared place and stays lean between runs, and a finished analysis is cached rather than paid for twice.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="after" data-od-id="page-after" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">After go-live</p>
+      <h2 class="h2">Drift is a fact about your data. Cost is a fact about the design.</h2>
+      <div class="grid-2" style="margin-top: var(--space-6);">
+        <article class="card">
+          <h3 class="h3">What we watch</h3>
+          <p>Input distributions, coverage and the rate at which a human overrides the answer. Model lifecycle, drift and cost monitoring.</p>
+        </article>
+        <article class="card">
+          <h3 class="h3">What we report</h3>
+          <p>Every technical choice is traceable to a measurable outcome: faster decisions, lower operating cost, or new capability. And the token bill is a design decision, so it is budgeted like one.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="proof" data-od-id="page-proof">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">Case studies</p>
+      <h2 class="h2">Proof of work in each area.</h2>
+    </div>
+    <div class="grid-2" style="margin-top: var(--space-6);">
+      <div class="feature card" data-od-id="page-case-swarm">
+        <h3 class="h3" style="margin-top: var(--space-2);">Marketing Research Swarm</h3>
+        <p>A LangGraph team of specialised research agents that plans, retrieves and synthesises market evidence. Retrieval-grounded agent selection keeps claims tied to sources, a shared blackboard keeps context lean between agents, and persistent caching of finished analyses cuts token cost.</p>
+        <div class="chip-row">
+          <span class="chip">LangGraph</span>
+          <span class="chip">RAG</span>
+          <span class="chip">Context engineering</span>
+        </div>
+        <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-marketing-research-swarm}}" target="_blank" rel="noopener">View architecture</a></p>
+      </div>
+      <div class="feature card" data-od-id="page-case-etl-quiet">
+        <h3 class="h3" style="margin-top: var(--space-2);">EHR ETL Pipeline</h3>
+        <p>The discipline applied where a model has no business deciding. Codes are mapped by rules and a reviewed seed, not by a model in the loop, so the same extract produces the same output next quarter.</p>
+        <p>The drawing shows what that costs and what it buys: <a class="link-inline" href="{{LINK:diagram-ehr-etl-pipeline}}" target="_blank" rel="noopener">the pipeline a reviewer can re-run</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="next" data-od-id="page-next" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <h2 class="h2">Where this sits.</h2>
+    <p class="body-muted" style="max-width: 62ch;">An assistant is only as governed as the platform underneath it, and only as cheap as the plumbing that feeds it.</p>
+    <ul style="padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+      <li><a class="link-inline btn-arrow" href="{{LINK:dataplatforms}}">The data the model reads</a></li>
+      <li><a class="link-inline btn-arrow" href="{{LINK:cloud-en-enterprise-software}}">Where the model runs</a></li>
+      <li><a class="link-inline btn-arrow" href="#contact">Scope a phase with us</a></li>
+    </ul>
   </div>
 </section>

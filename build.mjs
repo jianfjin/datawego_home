@@ -82,7 +82,8 @@ function generate() {
   let boot = null;
 
   assertRoutes();
-  problems.push(...sourceProblems(read("datawego-company-site.html")));
+  const home = read("datawego-company-site.html");
+  problems.push(...sourceProblems(home, Object.values(PAGE_BODIES).map(read)));
 
   for (const route of ROUTES) {
     if (route.status !== "live") continue;

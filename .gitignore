@@ -40,3 +40,10 @@ node_modules/
 # A zone export from Cloudflare. The plan cites the two CNAME rows it proves;
 # the file also names the owner's tunnel hosts, which are not this repo's business.
 docs/datawego.nl.txt
+
+# ── Brand art kept for reference only, never shipped and never in history ──
+# No page names these three, and none of them ever entered a commit. The two
+# favicon rasters U5 stopped deriving are the owner's to delete, separately.
+resources/DataWeGo_banner2.png
+resources/datawego1.png
+resources/Developer_Desk_with_Erasmus_Bridge_View.png

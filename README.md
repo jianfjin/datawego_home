@@ -54,7 +54,8 @@ disk has no origin for that request to come from.
 ├── src/                         # the generator's input, all of it
 │   ├── robots.txt               #   the crawler-facing stance, authored rather than inherited (ADR 0007)
 │   ├── 404.nl.html              #   the page behind an unknown address, in Dutch (R7)
-│   ├── pages/                   #   the other four Pages, as Bodies: sections, no chrome (ADR 0013)
+│   ├── pages/                   #   the other four Pages, as Bodies: their sections and
+│   │                          #   their sentences, no chrome — the copy lives here (ADR 0013, U10)
 │   │   ├── dataplatforms.html
 │   │   ├── ai-oplossingen.html
 │   │   ├── cloud-en-enterprise-software.html
@@ -70,7 +71,7 @@ disk has no origin for that request to come from.
 │       ├── graph.mjs            #   the structured data, every value read out of the modules above
 │       ├── dictionary.mjs       #   the source's `var NL`, read as build input
 │       ├── markup.mjs           #   the tag-stack walker the translation splices into
-│       └── untranslated.mjs     #   the ledger: the English the Dutch page is allowed to show
+│       ├── untranslated.mjs     #   the ledger: the English the Dutch page is allowed to show│       └── wordcount.mjs        #   what counts as a word, shared by the guard and the tool (R16)
 ├── functions/                   # Cloudflare Pages Functions — the server side
 │   └── api/
 │       ├── contact.js           #   POST /api/contact, the only route it owns
@@ -91,7 +92,8 @@ disk has no origin for that request to come from.
 │   ├── assets/                  #   chrome *and* artwork, every file named by its contents
 │   └── (no resources/)          #   what no page asks for is not uploaded
 ├── tools/
-│   └── derive-images.py         # brand artwork in, shipped artwork out; run by hand, never by the build
+│   ├── derive-images.py         # brand artwork in, shipped artwork out; run by hand, never by the build
+│   └── wordcount.mjs            # the four Pages counted, in both variants; reads, never writes
 ├── resources/                   # the authored originals, and what derives from them
 │   ├── DataWeGo_banner3.png     #   the hero's source art: 2056x491, 1.4MB, never shipped
 │   ├── hero-{640,1028,1542,2056}.webp  # the four widths a browser chooses between (R10)
@@ -102,7 +104,8 @@ disk has no origin for that request to come from.
 │   ├── apple-touch-icon.png     #   ditto, 180, because iOS wants a square with no transparency
 │   ├── og-image.jpg             #   1200x630 social card: the brand band over the mark
 │   └── DataWeGo_banner{,1,2}.png, DataWeGo_Logo-1..5.png, datawego1.png,
-│       Developer_Desk_with_Erasmus_Bridge_View.png  # kept for reference; no page names them
+│       Developer_Desk_with_Erasmus_Bridge_View.png  # kept for reference: no page names them,
+│                                       #   and .gitignore keeps the unshipped three out of git
 └── docs/                        # what the site is built from that is not code
     ├── pharm-platform.html      #   the four Diagram pages, exactly as archify exported them;
     │                            #   the build serves these bytes and writes their heads

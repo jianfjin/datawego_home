@@ -6,6 +6,11 @@
   the route table's own names, filled by {{LINK:…}} in the language of the page
   being written. A body that retyped what a Practice area does would be a second
   answer to that question, and only one of them gets edited.
+
+  What is new here is the part no Practice area owns: what a privacy review asks a
+  platform for, and where the boundaries have to sit for that answer to be true.
+  Those sentences are grounded in the EHR Transform Platform drawing rather than
+  in a compliance document, which is the only honest source this repository has.
 -->
 <section class="section" id="top" data-od-id="page-head">
   <div class="container stack" style="gap: var(--space-6);">
@@ -27,7 +32,55 @@
   </div>
 </section>
 
-<section class="section" id="areas" data-od-id="page-areas">
+<section class="section" id="spec" data-od-id="page-spec">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">The review comes first</p>
+      <h2 class="h2">A privacy review is the specification.</h2>
+      <p>In this sector the hard requirements are written by someone who will never query the system. A reviewer decides which record may be read, by whom, for which purpose, and what may leave afterwards.</p>
+      <p>So the design starts from that document instead of from a dashboard. Consent, purpose and access are modelled before the first table exists, because a control added after the pipeline is a convention rather than a control.</p>
+      <p class="body-muted">Everything on this Page is one sentence made true in software: the analysis you want is the only thing the policy allows.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="boundaries" data-od-id="page-boundaries" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Where the boundaries go</p>
+      <h2 class="h2">Three copies of one patient, three rules.</h2>
+    </div>
+    <div class="grid-3">
+      <article class="card" data-od-id="page-boundary-care">
+        <h3 class="h3">Care</h3>
+        <p>The record a clinician opens is identifiable, current, and traceable to the system it came from. This is the copy that has to be right first, because the others are derived from it.</p>
+      </article>
+      <article class="card" data-od-id="page-boundary-research">
+        <h3 class="h3">Research</h3>
+        <p>The cohort an analyst queries is a different object: pseudonymised, modelled for statistics, and held apart from the care copy by a rule rather than a habit. Identifiers are stripped before the record is mapped, and the mapping is a rule rather than a judgement.</p>
+      </article>
+      <article class="card" data-od-id="page-boundary-exit">
+        <h3 class="h3">What leaves</h3>
+        <p>Between those two sits the environment where the work happens. What exits it is a result and the checks that produced it, which is the whole boundary described in one line.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="evidence" data-od-id="page-evidence">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Alignment, checked</p>
+      <h2 class="h2">EHDS is a test, not a paragraph.</h2>
+      <p>We would rather show the checks than claim the compliance. Thirteen of them run against the platform's own catalogue, and they are deterministic on purpose: the same data gives the same verdict tomorrow, which is the only reason a check is worth citing.</p>
+      <p>What they look at is the boring half. Whether a dataset says what it may be used for and where its rows came from, in a form a review can be run against rather than read.</p>
+      <p>The drawing has the auditor and the boundaries in it: <a class="link-inline" href="{{LINK:diagram-ehr-transform-platform}}" target="_blank" rel="noopener">EHR Transform Platform</a>.</p>
+      <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="#contact">Scope a phase with us</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="areas" data-od-id="page-areas" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
   <div class="container stack" style="gap: var(--space-6);">
     <h2 class="h2">Three areas of work. One accountable engineer.</h2>
     <p class="body-muted" style="max-width: 62ch;">From the first source system to the model in production, DataWeGo covers the complete data lifecycle under one accountable engagement.</p>

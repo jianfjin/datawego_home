@@ -573,7 +573,10 @@ function accountForEveryString(records, lookup, problems) {
 
 /**
  * The two halves of the bargain the source makes, neither of which is visible
- * from either variant:
+ * from either variant. `siblings` are the other authored Page sources — the
+ * Bodies (ADR 0013) — because since U9 a sentence can live on the site without
+ * living in the home document, and a key nobody anywhere says is the dead thing
+ * this check was written to catch.
  *
  * - a ledger entry for a string the page no longer shows;
  * - a dictionary key for a string nothing in the page asks about any more.
@@ -582,8 +585,11 @@ function accountForEveryString(records, lookup, problems) {
  * dictionary that is allowed to keep dead entries is a dictionary whose live
  * entries stop being trustworthy.
  */
-export function sourceProblems(source) {
+export function sourceProblems(source, siblings = []) {
   const shown = new Set(visibleStrings(source).map((record) => record.key));
+  for (const sibling of siblings) {
+    for (const record of visibleStrings(sibling)) shown.add(record.key);
+  }
   const problems = [];
 
   for (const text of Object.keys(LEDGER)) {
@@ -595,7 +601,7 @@ export function sourceProblems(source) {
   const entries = readDictionary(source);
   const lookup = makeLookup(entries);
   const used = new Set();
-  for (const record of visibleStrings(source)) {
+  for (const record of [...visibleStrings(source), ...siblings.flatMap((sibling) => visibleStrings(sibling))]) {
     if (record.host && Object.prototype.hasOwnProperty.call(entries, `${record.host}|${record.key}`)) {
       used.add(`${record.host}|${record.key}`);
     } else if (Object.prototype.hasOwnProperty.call(entries, record.key)) {

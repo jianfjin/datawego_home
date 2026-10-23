@@ -12,8 +12,10 @@
   - `{{PAGE_NAME}}` is the heading, filled from the route table. A body that
     typed the page's own name would be a second statement of it, and the
     dictionary's Dutch for the same words a third;
-  - every sentence below is one the site already says, because U9 ships
-    structure and U10 ships words (R16). No prose is invented in this file.
+  - every sentence below is either this Page's own copy, with its Dutch in the
+    home document's dictionary, or a sentence the site already says elsewhere.
+    U10 wrote the first of those, and the owner's native review is what makes it
+    Dutch (R16). Nothing here is a placeholder.
 -->
 <section class="section" id="top" data-od-id="page-head">
   <div class="container stack" style="gap: var(--space-6);">
@@ -28,9 +30,49 @@
   </div>
 </section>
 
-<section class="section" id="proof" data-od-id="page-proof">
+<section class="section" id="failures" data-od-id="page-failures" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
   <div class="container stack" style="gap: var(--space-6);">
-    <h2 class="h2">Proof of work in each area.</h2>
+    <div>
+      <p class="eyebrow">What the build is actually for</p>
+      <h2 class="h2">Three failures a platform is judged on.</h2>
+      <p class="body-muted" style="max-width: 68ch;">A data platform earns trust in one place: a number on a screen traces back to the rows it came from, without anyone asking.</p>
+    </div>
+    <div class="grid-3">
+      <article class="card" data-od-id="page-failure-identity">
+        <h3 class="h3">The same thing, twice</h3>
+        <p>One patient, or one product, arriving as two records because nothing resolved identity at the door. Everything downstream inherits the duplicate, and every report built on it disagrees with its neighbour.</p>
+      </article>
+      <article class="card" data-od-id="page-failure-definitions">
+        <h3 class="h3">Two definitions of one metric</h3>
+        <p>A definition that quietly drifted from the one in the report upstairs. Layered modelling and tested transformations give analysts and models the same agreed definitions.</p>
+      </article>
+      <article class="card" data-od-id="page-failure-schema">
+        <h3 class="h3">A pipeline that breaks on a Tuesday</h3>
+        <p>A source changes shape and the run that fails is three stages downstream. Schema reconciliation at the entry turns that into a warning instead of an outage.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="decisions" data-od-id="page-decisions">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Sequence</p>
+      <h2 class="h2">Decided before the first table exists.</h2>
+      <p>Identity comes first: what makes two rows the same person, the same medicine, the same contract. It is the spine of the platform, and it is written down rather than assumed.</p>
+      <p>Then the entry. Source systems, streams, files and clinical feeds land in a governed entry zone with lineage from the first byte.</p>
+      <p>Then the layer people actually query. Self-service analytics, BI and exploration sit on the governed semantic layer, not on exports.</p>
+      <p class="body-muted">Which table format and which orchestrator are choices you can defend afterwards. Those three are not.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="proof" data-od-id="page-proof" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">Case studies</p>
+      <h2 class="h2">Proof of work in each area.</h2>
+    </div>
     <div class="grid-2" style="margin-top: var(--space-6);">
       <div class="feature card" data-od-id="page-case-pharm">
         <h3 class="h3" style="margin-top: var(--space-2);">Pharm Platform</h3>
@@ -43,5 +85,29 @@
         <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-ehr-etl-pipeline}}" target="_blank" rel="noopener">View architecture</a></p>
       </div>
     </div>
+    <p class="body-muted" style="max-width: 62ch;">Two different estates, one shape of answer: land it honestly, resolve it once, model it in layers, and let the drawing prove the rest.</p>
+  </div>
+</section>
+
+<section class="section" id="cost" data-od-id="page-cost">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">The expensive part</p>
+      <h2 class="h2">What getting it wrong costs.</h2>
+      <p>Never the storage bill. It is the quarter lost deciding which of two reports is right, and the audit question nobody can answer: who else has been able to read this table, and since when.</p>
+      <p>So the boring controls are the deliverable. Access policy, quality checks, privacy controls and audit trails run as code across every stage.</p>
+      <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="#contact">Scope a phase with us</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="next" data-od-id="page-next" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <h2 class="h2">Where this sits.</h2>
+    <ul style="padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+      <li><a class="link-inline btn-arrow" href="{{LINK:ai-oplossingen}}">Models built on the platform</a></li>
+      <li><a class="link-inline btn-arrow" href="{{LINK:cloud-en-enterprise-software}}">Connecting it to what already runs</a></li>
+      <li><a class="link-inline btn-arrow" href="{{LINK:zorg-en-life-sciences}}">The sector where this is hardest</a></li>
+    </ul>
   </div>
 </section>

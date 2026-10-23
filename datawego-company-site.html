@@ -1517,7 +1517,140 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     "How we work": "Zo werken we",
     "Principles": "Principes",
     "DataWeGo · Data infrastructure & analytics": "DataWeGo · data-infrastructuur & analytics",
-    "TURNING DATA INTO DECISIONS": "VAN DATA NAAR BESLISSINGEN"
+    "TURNING DATA INTO DECISIONS": "VAN DATA NAAR BESLISSINGEN",
+
+    /* U10 — the Data platforms Page */
+    "What the build is actually for": "Waar de build echt voor is",
+    "Three failures a platform is judged on.": "Drie storingen waar een platform op wordt afgerekend.",
+    "A data platform earns trust in one place: a number on a screen traces back to the rows it came from, without anyone asking.":
+      "Een dataplatform verdient vertrouwen op één plek: een getal op een scherm is terug te leiden naar de rijen waaruit het komt, zonder dat iemand dat hoeft te vragen.",
+    "The same thing, twice": "Hetzelfde, twee keer",
+    "One patient, or one product, arriving as two records because nothing resolved identity at the door. Everything downstream inherits the duplicate, and every report built on it disagrees with its neighbour.":
+      "Eén patiënt, of één product, dat als twee records binnenkomt omdat niets de identiteit bij de ingang heeft opgelost. Alles stroomafwaars erft de duplicatie, en elk rapport eronder wijkt af van zijn buurman.",
+    "Two definitions of one metric": "Twee definities van één metric",
+    "A definition that quietly drifted from the one in the report upstairs. Layered modelling and tested transformations give analysts and models the same agreed definitions.":
+      "Een definitie die stilletjes is weggedrift van die in het rapport boven je. Gelaagde modellering en geteste transformaties geven analisten en modellen dezelfde afgesproken definities.",
+    "A pipeline that breaks on a Tuesday": "Een pipeline die op een dinsdag stukloopt",
+    "A source changes shape and the run that fails is three stages downstream. Schema reconciliation at the entry turns that into a warning instead of an outage.":
+      "Een bron verandert van vorm en de run die faalt, ligt drie stappen stroomafwaars. Schema-afstemming bij de ingang maakt er een waarschuwing van in plaats van een storing.",
+    "Sequence": "Volgorde",
+    "Decided before the first table exists.": "Beslist voordat de eerste tabel bestaat.",
+    "Identity comes first: what makes two rows the same person, the same medicine, the same contract. It is the spine of the platform, and it is written down rather than assumed.":
+      "Identiteit komt eerst: wat van twee rijen dezelfde persoon, hetzelfde medicijn of hetzelfde contract maakt. Het is de ruggengraat van het platform, en het is opgeschreven in plaats van aangenomen.",
+    "Then the entry. Source systems, streams, files and clinical feeds land in a governed entry zone with lineage from the first byte.":
+      "Daarna de ingang. Bronsystemen, streams, bestanden en klinische feeds landen in een governed instapzone met herkomstregistratie vanaf de eerste byte.",
+    "Then the layer people actually query. Self-service analytics, BI and exploration sit on the governed semantic layer, not on exports.":
+      "Daarna de laag die mensen echt bevragen. Self-service analytics, BI en exploratie draaien op de governed semantische laag, niet op exports.",
+    "Which table format and which orchestrator are choices you can defend afterwards. Those three are not.":
+      "Welke tabelformat en welke orchestrator zijn keuzes die je achteraf kunt verdedigen. Die drie niet.",
+    "The expensive part": "Het dure deel",
+    "What getting it wrong costs.": "Wat het kost als het fout gaat.",
+    "Never the storage bill. It is the quarter lost deciding which of two reports is right, and the audit question nobody can answer: who else has been able to read this table, and since when.":
+      "Nooit de opslagfactuur. Het is het kwartaal dat verloren gaat aan bepalen welk van de twee rapporten klopt, en de auditvraag die niemand kan beantwoorden: wie kon deze tabel nog meer lezen, en sinds wanneer.",
+    "So the boring controls are the deliverable. Access policy, quality checks, privacy controls and audit trails run as code across every stage.":
+      "Daarom zijn de saaie controles de oplevering. Toegangsbeleid, kwaliteitschecks, privacycontroles en audit trails draaien als code door alle fasen heen.",
+    "Two different estates, one shape of answer: land it honestly, resolve it once, model it in layers, and let the drawing prove the rest.":
+      "Twee verschillende landschappen, één vorm van antwoord: land het eerlijk, los het één keer op, modelleer het in lagen en laat de tekening de rest bewijzen.",
+    "Models built on the platform": "Modellen gebouwd op het platform",
+    "Connecting it to what already runs": "Aansluiten op wat al draait",
+    "The sector where this is hardest": "De sector waar dit het moeilijkst is",
+    "Where this sits.": "Waar dit staat.",
+
+    /* U10 — the AI-powered solutions Page */
+    "What earns a model its place": "Wat een model zijn plek verdient",
+    "A model is a decision with a baseline.": "Een model is een beslissing met een baseline.",
+    "That rule decides the architecture rather than the last phase of it. The evaluation harness is a component in the graph, not a report written afterwards, and the review path is a queue somebody owns.":
+      "Die regel bepaalt de architectuur, niet pas de laatste fase ervan. De evaluation harness is een component in de graph, geen rapport dat achteraf wordt geschreven, en het toetspad is een wachtrij die iemand beheert.",
+    "It also decides what we decline to build. Where a deterministic map gives the same answer with no variance to defend, we build the map and leave the model out of the data path.":
+      "Het bepaalt ook wat we niet bouwen. Waar een deterministische kaart hetzelfde antwoord geeft zonder variatie om te verdedigen, bouwen we de kaart en laten we het model buiten het datapad.",
+    "Assistants and automation": "Assistenten en automatisering",
+    "Grounded, or it is a rumour.": "Gegrond, of het is een gerucht.",
+    "An assistant over your own documents is only useful when every claim can be pointed at something. So the retrieval layer is designed before the prompt is, and the answer carries its sources or does not arrive.":
+      "Een assistent op je eigen documenten is alleen bruikbaar als elke bewering naar iets te verwijzen is. Daarom wordt de retrieval-laag vóór de prompt ontworpen, en draagt het antwoord zijn bronnen, of komt het niet.",
+    "Whether the words come from a hosted model or one running on hardware you control is a deployment choice, not a design choice. We write the graph so either can answer, and so switching is a configuration change rather than a rebuild.":
+      "Of de woorden van een hosted model komen of van een model op eigen hardware, is een deploykeuze en geen ontwerpkeuze. We schrijven de graph zodat beide kunnen antwoorden, en zodat wisselen een configuratiewijziging is in plaats van een herbouw.",
+    "Context is a budget. What the agents have already learned is kept in one shared place and stays lean between runs, and a finished analysis is cached rather than paid for twice.":
+      "Context is een budget. Wat de agents al geleerd hebben, blijft op één gedeelde plek en slank tussen runs door, en een afgeronde analyse wordt gecachet in plaats van twee keer betaald.",
+    "After go-live": "Na de livegang",
+    "Drift is a fact about your data. Cost is a fact about the design.":
+      "Drift is een feit over jouw data. Kost is een feit over het ontwerp.",
+    "What we watch": "Wat we bewaken",
+    "Input distributions, coverage and the rate at which a human overrides the answer. Model lifecycle, drift and cost monitoring.":
+      "Inputverdelingen, dekking en het percentage waarin een mens het antwoord overstuurt. Modellevenscyclus, drift en kostmonitoring.",
+    "What we report": "Wat we melden",
+    "Every technical choice is traceable to a measurable outcome: faster decisions, lower operating cost, or new capability. And the token bill is a design decision, so it is budgeted like one.":
+      "Elke technische keuze is te herleiden tot een meetbaar resultaat: snellere beslissingen, lagere operationele kosten of nieuwe mogelijkheden. En de tokenfactuur is een ontwerpkeuze, dus die krijgt een budget als zodanig.",
+    "The discipline applied where a model has no business deciding. Codes are mapped by rules and a reviewed seed, not by a model in the loop, so the same extract produces the same output next quarter.":
+      "De discipline toegepast waar een model niets te beslissen heeft. Codes worden omgezet door regels en een getoetste seed, niet door een model in de lus, zodat hetzelfde extract volgend kwartaal dezelfde output geeft.",
+    "The drawing shows what that costs and what it buys:":
+      "De tekening laat zien wat dat kost en wat het oplevert:",
+    "the pipeline a reviewer can re-run": "de pipeline die een reviewer opnieuw kan draaien",
+    "An assistant is only as governed as the platform underneath it, and only as cheap as the plumbing that feeds it.":
+      "Een assistent is maar zo governed als het platform eronder, en maar zo goedkoop als de aanvoer die het voedt.",
+    "The data the model reads": "De data die het model leest",
+    "Where the model runs": "Waar het model draait",
+
+    /* U10 — the Cloud & enterprise software Page */
+    "Nothing runs alone": "Niets draait alleen",
+    "The platform is not the only thing that has to keep working.":
+      "Het platform is niet het enige dat moet blijven werken.",
+    "Most of this work lands beside systems that already have a job: a records system, an ERP, a document archive, a billing tool nobody is allowed to stop. The integration layer is where a platform either earns its keep or becomes the next thing on the maintenance list.":
+      "Het meeste van dit werk landt naast systemen die al een taak hebben: een recordsysteem, een ERP, een documentarchief, een facturatietool die niemand mag stilleggen. De integratielaag is waar een platform zijn bestaansrecht verdient of het volgende puntje op de onderhoudslijst wordt.",
+    "We treat an interface as a contract with the team that has to keep it: versioned, documented, monitored from both sides, so a breakage says which system moved before it says the pipeline failed.":
+      "Wij bekijken een interface als een contract met het team dat het moet blijven draaien: versioneel, gedocumenteerd en van beide kanten bewaakt, zodat een breuk eerst zegt welk systeem bewoog en dan dat de pipeline faalde.",
+    "Operability": "Beheersbaarheid",
+    "Infrastructure another engineer can be handed.":
+      "Infrastructuur die aan een andere engineer over te dragen is.",
+    "Environment definitions live in the same repository as the pipeline code, so a reviewer can see what runs where and a platform does not exist inside one person's console session.":
+      "Omgevingsdefinities staan in dezelfde repository als de pipelinecode, zodat een reviewer ziet wat waar draait en een platform niet in iemands consolesessie blijft bestaan.",
+    "That is also the handover test. If your own team cannot deploy the platform from the repository on a quiet afternoon, what we built is not finished yet.":
+      "Dat is meteen de overdrachtstest. Als jouw eigen team het platform op een rustige middag niet uit de repository kan deployen, is wat we bouwden nog niet af.",
+    "Cost, performance, reliability": "Kost, prestatie, betrouwbaarheid",
+    "Budgets are set before they are measured.":
+      "Budgetten worden vastgelegd voordat ze gemeten worden.",
+    "Per run": "Per run",
+    "What one pipeline execution is allowed to cost, stated in the design and enforced in the run rather than discovered on the invoice.":
+      "Wat één pipeline-uitvoering mag kosten, staat in het ontwerp en wordt in de run afgedwongen in plaats van op de factuur ontdekt.",
+    "Per query": "Per query",
+    "How long an analyst may be kept waiting, and which layer answers when that budget is tight.":
+      "Hoe lang een analist mag wachten, en welke laag antwoordt als dat budget krap is.",
+    "Per failure": "Per storing",
+    "How long a degraded source may run before the platform stops publishing rather than publishing something wrong.":
+      "Hoe lang een verslechterde bron mag draaien voordat het platform stopt met publiceren in plaats van iets verkeerds te publiceren.",
+    "The interfaces you build against in that drawing are deliberately ordinary: an HTTP API for the catalogue, a table for the analyst, a metadata record for the regulator.":
+      "De interfaces waartegen je in die tekening bouwt, zijn bewust gewoon: een HTTP API voor de catalogus, een tabel voor de analist, een metadata-record voor de toezichthouder.",
+    "Enterprise innovation": "Enterprise-innovatie",
+    "What the platform itself has to be": "Wat het platform zelf moet zijn",
+    "What runs on top of it": "Wat erbovenop draait",
+
+    /* U10 — the Zorg & life sciences Page */
+    "The review comes first": "De toets komt eerst",
+    "A privacy review is the specification.": "Een privacytoets is de specificatie.",
+    "In this sector the hard requirements are written by someone who will never query the system. A reviewer decides which record may be read, by whom, for which purpose, and what may leave afterwards.":
+      "In deze sector worden de harde eisen geschreven door iemand die het systeem nooit zal bevragen. Een reviewer bepaalt welk record door wie, voor welk doel gelezen mag worden en wat er daarna uit mag.",
+    "So the design starts from that document instead of from a dashboard. Consent, purpose and access are modelled before the first table exists, because a control added after the pipeline is a convention rather than a control.":
+      "Daarom begint het ontwerp bij dat document in plaats van bij een dashboard. Toestemming, doel en toegang worden gemodelleerd voordat de eerste tabel bestaat, want een controle die achteraf op de pipeline wordt gezet, is een afspraak in plaats van een controle.",
+    "Everything on this Page is one sentence made true in software: the analysis you want is the only thing the policy allows.":
+      "Alles op deze pagina draait om één zin die in software waar moet worden: de analyse die je wilt, is het enige wat het beleid toestaat.",
+    "Where the boundaries go": "Waar de grenzen liggen",
+    "Three copies of one patient, three rules.": "Drie kopieën van één patiënt, drie regels.",
+    "Care": "Zorg",
+    "The record a clinician opens is identifiable, current, and traceable to the system it came from. This is the copy that has to be right first, because the others are derived from it.":
+      "Het record die een arts opent, is identificeerbaar, actueel en herleidbaar naar het systeem waaruit het komt. Dit is de kopie die als eerste kloppend moet zijn, want de andere zijn ervan afgeleid.",
+    "Research": "Onderzoek",
+    "The cohort an analyst queries is a different object: pseudonymised, modelled for statistics, and held apart from the care copy by a rule rather than a habit. Identifiers are stripped before the record is mapped, and the mapping is a rule rather than a judgement.":
+      "Het cohort dat een analist bevraagt, is een ander object: gepseudonymiseerd, gemodelleerd voor statistiek en door een regel van de zorgkopie gescheiden, niet door een gewoonte. Identificatoren worden weggehaald vóórdat het record wordt omgezet, en die omzetting is een regel in plaats van een oordeel.",
+    "What leaves": "Wat eruit gaat",
+    "Between those two sits the environment where the work happens. What exits it is a result and the checks that produced it, which is the whole boundary described in one line.":
+      "Tussen die twee staat de omgeving waar het werk gebeurt. Wat eruit komt, is een resultaat plus de checks die het opleverden, en dat is de hele grens in één regel.",
+    "Alignment, checked": "Afstemming, getoetst",
+    "EHDS is a test, not a paragraph.": "EHDS is een toets, geen paragraaf.",
+    "We would rather show the checks than claim the compliance. Thirteen of them run against the platform's own catalogue, and they are deterministic on purpose: the same data gives the same verdict tomorrow, which is the only reason a check is worth citing.":
+      "We tonen liever de checks dan dat we compliantie beweren. Dertien ervan draaien op de catalogus van het platform zelf, en ze zijn bewust deterministisch: dezelfde data geeft morgen hetzelfde oordeel, en dat is de enige reden dat een check iets waard is om aan te halen.",
+    "What they look at is the boring half. Whether a dataset says what it may be used for and where its rows came from, in a form a review can be run against rather than read.":
+      "Waar ze naar kijken is het saaie deel. Of een dataset vertelt waarvoor hij gebruikt mag worden en waar zijn rijen vandaan komen, in een vorm waarop een toets draait in plaats van die gelezen wordt.",
+    "The drawing has the auditor and the boundaries in it:":
+      "De tekening bevat de auditor en de grenzen:",
   };
 
   var PAGE = {

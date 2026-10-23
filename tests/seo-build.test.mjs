@@ -48,6 +48,8 @@ import {
   urlOf,
 } from "../src/site/routes.mjs";
 import { makeLookup, readDictionary } from "../src/site/dictionary.mjs";
+import { PAGE_BODIES } from "../src/site/pages.mjs";
+import { visibleWords } from "../src/site/wordcount.mjs";
 import { applyDictionary, decodeEntities, encodeText, norm } from "../src/site/markup.mjs";
 import { isLedgered } from "../src/site/untranslated.mjs";
 import {
@@ -70,6 +72,9 @@ const read = (relative) => fs.readFileSync(new URL(relative, ROOT), "utf8");
 /** The one Page source that exists today, and the route that ships it. */
 const SOURCE = read("datawego-company-site.html");
 const home = routeByKey.get("home");
+
+/** The four Bodies U10 wrote copy into, as the build reads them (ADR 0013). */
+const BODIES = Object.values(PAGE_BODIES).map(read);
 
 const entries = readDictionary(SOURCE);
 const lookup = makeLookup(entries);
@@ -417,8 +422,52 @@ test("a dictionary key nobody says any more fails the build", () => {
 });
 
 test("the source as committed is on speaking terms with both mechanisms", () => {
-  assert.deepEqual(sourceProblems(SOURCE), [], "the ledger and the dictionary are both current");
+  // The Bodies are passed as siblings because since U10 a sentence may live on
+  // the site in a Body rather than in the prototype. Read against SOURCE alone,
+  // every key U10 wrote would look dead — the wrong answer for the wrong
+  // reason — so the two mutations below are what keep this assertion honest.
+  assert.deepEqual(sourceProblems(SOURCE, BODIES), [], "the ledger and the dictionary are both current");
 });
+
+test("a key only a Body says is alive; a key nothing says is dead", () => {
+  const bodyStrings = new Set(BODIES.flatMap((body) => visibleStrings(body).map((record) => record.key)));
+  assert.ok(bodyStrings.size > 100, `the Bodies carry the Page copy now, and only ${bodyStrings.size} visible strings were found in them`);
+
+  const bodyOnly = [...bodyStrings].find((key) => !SOURCE_STRINGS.has(key) && key.length > 20);
+  assert.ok(bodyOnly, "U10 wrote copy that is nowhere in the prototype, or the first half of this check is vacuous");
+  assert.ok(Object.prototype.hasOwnProperty.call(entries, bodyOnly), `${bodyOnly} needs its Dutch somewhere, and the build would have refused it otherwise`);
+  assert.deepEqual(
+    deadKeys(sourceProblems(SOURCE, BODIES)).filter((problem) => problem.includes(bodyOnly)),
+    [],
+    "a key whose only speaker is a Body must not read as dead",
+  );
+  assert.ok(
+    deadKeys(sourceProblems(SOURCE)).some((problem) => problem.includes(bodyOnly)),
+    "read without the Bodies the same key does read as dead, which is what makes the sibling list load-bearing rather than decorative",
+  );
+
+  const prototypeOnly = [...SOURCE_STRINGS].find(
+    (key) => key.length > 30 && !/[{{|]/.test(key) && !bodyStrings.has(key) && Object.prototype.hasOwnProperty.call(entries, key),
+  );
+  assert.ok(prototypeOnly, "there has to be a sentence only the prototype says, or nothing here is a real deletion");
+  const problems = deadKeys(sourceProblems(renameKey(SOURCE, prototypeOnly, "Nothing anywhere says this any more"), BODIES));
+  assert.deepEqual(
+    problems,
+    ['the dictionary holds "Nothing anywhere says this any more", which nothing in the Page source says — remove the key or find the string that lost it'],
+    "deleting a sentence from the prototype, with no Body saying it, is caught by exactly one problem",
+  );
+});
+
+/** Rename one dictionary key, leaving whatever pointed at its string behind. */
+function renameKey(source, from, to) {
+  const quoted = `"${from}"`;
+  const at = source.indexOf(quoted);
+  assert.notEqual(at, -1, `${quoted} is not in the prototype source`);
+  assert.equal(source.indexOf(quoted, at + 1), -1, `${quoted} appears twice, so the mutation would miss one`);
+  return source.slice(0, at) + `"${to}"` + source.slice(at + quoted.length);
+}
+
+const deadKeys = (problems) => problems.filter((problem) => problem.includes("nothing in the Page source says"));
 
 // ── the chrome is shared by address (ADR 0004) ──────────────────────────────
 
@@ -842,23 +891,57 @@ test("a route that goes live without copy stops the build rather than shipping a
   assert.deepEqual(ROUTES.filter((route) => route.status === "planned"), [], "every declared surface is live; a route left dark would be an orphan with a plan");
 });
 
-test("a Page body says nothing the home Page has not already said", () => {
-  // U9's line is that the four new surfaces arrive with no new prose: what they
-  // state is what the site already stated about that Practice area or industry,
-  // moved out of the home Page's section list and into a page of its own. The
-  // dictionary proves the Dutch half of that — an unseen sentence would fail the
-  // build for having no key — so this is the English half, and it is the guard
-  // U10 walks past on purpose: when a page earns new copy, this test is the one
-  // that has to be told.
-  const said = new Set(visibleStrings(SOURCE).map((record) => record.key));
+test("a rendered Page says nothing its sources did not write", () => {
+  // The durable form of the guard U9 needed. U9 shipped the four surfaces with
+  // no new prose at all — home's own sentences, lifted — and U10 gave each of
+  // them copy of its own, so "already said by the home Page" stopped being the
+  // rule and became a coincidence. What has to stay true is weaker and harder:
+  // the generator may move, translate and place words, and may invent none. So
+  // every visible string on a rendered Page is required to be in the home
+  // document, or in that Page's own Body, or to be the one sentence the register
+  // lends every indexable address (ADR 0012). A generator that grew a friendly
+  // "Copyright" of its own would fail here rather than ship half-English Dutch.
+  const authored = new Map(
+    ROUTES.filter((route) => route.kind === "page" && route.status === "live").map((route) => {
+      const file = pageSourceFor(route);
+      const body = file === null ? SOURCE : read(file);
+      return [route.key, new Set([...visibleStrings(SOURCE), ...visibleStrings(body)].map((record) => record.key))];
+    }),
+  );
+
   const { files } = generate();
-  for (const route of ROUTES.filter((r) => r.kind === "page" && r.status === "live")) {
-    const html = String(files.get(distPath(route, "en")));
-    const invented = [...new Set(visibleStrings(html).map((record) => record.key)
-      .filter((key) => /[a-z]/i.test(key) && !said.has(key) && key !== company.practiceClause.en))];
-    assert.deepEqual(invented, [], `${route.key}: Page copy the home Page never said`);
+  for (const [key, said] of authored) {
+    const html = String(files.get(distPath(routeByKey.get(key), "en")));
+    const invented = [
+      ...new Set(
+        visibleStrings(html)
+          .map((record) => record.key)
+          .filter((text) => /[a-z]/i.test(text) && !said.has(text) && text !== company.practiceClause.en),
+      ),
+    ];
+    assert.deepEqual(invented, [], `${key}: copy neither the prototype nor this Page's Body ever wrote`);
   }
 });
+
+test("each Page is 400–700 words of prose in both of its variants (R16)", () => {
+  // The budget the plan set for the four new surfaces, read off the served bytes
+  // in both languages. Both variants are counted because a translation that runs
+  // long is the same failure the English copy would be, and because a Page that
+  // only holds up in one language tells the owner nothing about the other. What
+  // counts as a word lives in src/site/wordcount.mjs, shared with the tool that
+  // shows the owner the figures.
+  const { files } = generate();
+  for (const route of ROUTES.filter((r) => r.kind === "page" && r.status === "live" && r.key !== "home")) {
+    for (const lang of LANGS) {
+      const counted = visibleWords(String(files.get(distPath(route, lang))));
+      assert.ok(
+        counted >= 400 && counted <= 700,
+        `${urlOf(route.key, lang)}: ${counted} visible words, and R16 set 400-700 for every new Page`,
+      );
+    }
+  }
+});
+
 test("the company facts the head states are the register's", () => {
   // Nothing in a variant may state a company fact the register does not carry.
   assert.ok(variant("nl").html.includes(company.name));

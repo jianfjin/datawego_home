@@ -1,4 +1,4 @@
-<!-- The Cloud & enterprise software Page body. Same two rules as src/pages/dataplatforms.html. -->
+<!-- The Cloud & enterprise software Page body. Same rules as src/pages/dataplatforms.html. -->
 <section class="section" id="top" data-od-id="page-head">
   <div class="container stack" style="gap: var(--space-6);">
     <p class="eyebrow">Practice areas</p>
@@ -12,19 +12,97 @@
   </div>
 </section>
 
-<section class="section" id="proof" data-od-id="page-proof" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+<section class="section" id="neighbours" data-od-id="page-neighbours" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
   <div class="container stack" style="gap: var(--space-6);">
-    <h2 class="h2">Proof of work in each area.</h2>
-    <div class="feature card" data-od-id="page-case-ehr">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Nothing runs alone</p>
+      <h2 class="h2">The platform is not the only thing that has to keep working.</h2>
+      <p>Most of this work lands beside systems that already have a job: a records system, an ERP, a document archive, a billing tool nobody is allowed to stop. The integration layer is where a platform either earns its keep or becomes the next thing on the maintenance list.</p>
+      <p>We treat an interface as a contract with the team that has to keep it: versioned, documented, monitored from both sides, so a breakage says which system moved before it says the pipeline failed.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="handover" data-od-id="page-handover">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div style="max-width: 68ch;">
+      <p class="eyebrow">Operability</p>
+      <h2 class="h2">Infrastructure another engineer can be handed.</h2>
+      <p>Environment definitions live in the same repository as the pipeline code, so a reviewer can see what runs where and a platform does not exist inside one person's console session.</p>
+      <p>Code review, tests, documented pipelines and reproducible environments. You get an asset you own, not a dependency on us.</p>
+      <p class="body-muted">That is also the handover test. If your own team cannot deploy the platform from the repository on a quiet afternoon, what we built is not finished yet.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="budget" data-od-id="page-budget" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">Cost, performance, reliability</p>
+      <h2 class="h2">Budgets are set before they are measured.</h2>
+      <p class="body-muted" style="max-width: 62ch;">Cloud-native, horizontally scalable designs with cost and performance budgets set at the start and tracked continuously.</p>
+      <div class="grid-3" style="margin-top: var(--space-6);">
+        <article class="card">
+          <h3 class="h3">Per run</h3>
+          <p>What one pipeline execution is allowed to cost, stated in the design and enforced in the run rather than discovered on the invoice.</p>
+        </article>
+        <article class="card">
+          <h3 class="h3">Per query</h3>
+          <p>How long an analyst may be kept waiting, and which layer answers when that budget is tight.</p>
+        </article>
+        <article class="card">
+          <h3 class="h3">Per failure</h3>
+          <p>How long a degraded source may run before the platform stops publishing rather than publishing something wrong.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="proof" data-od-id="page-proof">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">Case studies</p>
+      <h2 class="h2">Proof of work in each area.</h2>
+    </div>
+    <div class="feature card" data-od-id="page-case-ehr" style="margin-top: var(--space-6);">
       <h3 class="h3" style="margin-top: var(--space-2);">EHR Transform Platform</h3>
       <p>A governance-first health data architecture: an immutable raw landing zone under a cross-cutting control plane for consent, access policy and audit. FHIR serves identifiable primary-use exchange, pseudonymized OMOP analytics run on a lakehouse, and a secure processing environment lets only vetted outputs leave — aligned with EHDS.</p>
       <div class="chip-row">
-      <span class="chip">EHDS</span>
-      <span class="chip">HL7 FHIR</span>
-      <span class="chip">OMOP</span>
-      <span class="chip">Lakehouse</span>
-            </div>
+        <span class="chip">EHDS</span>
+        <span class="chip">HL7 FHIR</span>
+        <span class="chip">OMOP</span>
+        <span class="chip">Lakehouse</span>
+      </div>
       <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-ehr-transform-platform}}" target="_blank" rel="noopener">View architecture</a></p>
     </div>
+    <p class="body-muted" style="max-width: 62ch;">The interfaces you build against in that drawing are deliberately ordinary: an HTTP API for the catalogue, a table for the analyst, a metadata record for the regulator.</p>
+  </div>
+</section>
+
+<section class="section" id="enterprise" data-od-id="page-enterprise" style="background: var(--surface); border-block: 1px solid var(--border-soft);">
+  <div class="container stack" style="gap: var(--space-6);">
+    <div>
+      <p class="eyebrow">Enterprise innovation</p>
+      <h2 class="h2">One version of the truth across the operating business</h2>
+      <p class="body-muted">Organisations that have outgrown spreadsheets and one-off reports. We consolidate the estate, then put analytics and AI where the decisions are actually made.</p>
+      <ul style="padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+        <li class="body-muted">— Cloud migration and modernisation of legacy warehouses</li>
+        <li class="body-muted">— Business intelligence and governed self-service analytics</li>
+        <li class="body-muted">— AI automation of document and back-office processes</li>
+        <li class="body-muted">— Data governance operating models that outlast the project</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="next" data-od-id="page-next">
+  <div class="container stack" style="gap: var(--space-6);">
+    <h2 class="h2">Where this sits.</h2>
+    <ul style="padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3);">
+      <li><a class="link-inline btn-arrow" href="{{LINK:dataplatforms}}">What the platform itself has to be</a></li>
+      <li><a class="link-inline btn-arrow" href="{{LINK:ai-oplossingen}}">What runs on top of it</a></li>
+      <li><a class="link-inline btn-arrow" href="#contact">Scope a phase with us</a></li>
+    </ul>
   </div>
 </section>
