@@ -200,11 +200,15 @@ curl -s  $W/en/ | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="/
 #      only the Dutch page is how a whole variant of broken images survived Stage 1: / is the one
 #      address where a relative path happens to resolve.
 for p in "" "en/"; do
-  for r in $(curl -s $W/$p | grep -o '"/[^"]*assets/[^"]*"' | tr -d '"' | sort -u); do
+  for r in $(curl -s $W/$p | grep -oE '/assets/[a-z0-9._-]*\.(css|js|svg|png|jpg|webp)' | sort -u); do
     printf '%s %s ' "$p" "$r"; curl -s -o /dev/null -w '%{http_code}\n' "$W$r"
   done
-done                                               # every line 200, and the two lists are the same files
+done   # every line 200, and the two lists are the same files but for site.<hash>.js, which differs
+       # by variant on purpose. Stop the name at its extension: a srcset carries " 640w," after
+       # each entry, and a pattern that runs to the closing quote asks for that as a URL and reports
+       # 000 for a file that was never named.
 curl -s $W/en/ | grep -cE '="(assets|docs)/'       # 0 — a request that begins with a name resolves against /en/
+curl -s $W/en/ | grep -o 'href="[^"]*docs/[^"]*"' | sort -u   # four absolute bare addresses, not four 404s
 
 # R11  the graph, in the bytes a crawler that runs no JavaScript receives. -A8 because the block
 #      opens with @context and @graph; the Organization node is six lines in, and -A3 ends inside it.
@@ -264,6 +268,19 @@ being the homepage", not "text/plain". And the R9/R10 header block is deploy-onl
 over `dist/` sends no `Cache-Control` whatsoever, so those lines are the deployment's words, not
 the build's.
 
+**Made 2026-10-23, at the redeploy that fixed them:** the whole contract, R19 included, passed on
+`https://www.datawego.nl` with only the owner's four rows outstanding — ① apex still 200, ② still
+3,287 B, ⑥ still rewriting both `mailto:` into `/cdn-cgi/l/email-protection#…`, and ③ needing
+nothing. Both pages name eleven assets and all twenty-two requests answer 200; `/en/` asks for
+`site.ad853e2daaeb.js` where `/` asks for `site.fd23787b0076.js`, which is the variant split doing
+its job rather than a defect, and the two lists are otherwise the same files. Each page's four
+Diagram links are now absolute bare addresses, and all four answer 200 with `noindex, follow` and no
+`application/ld+json`, while `.html` and the trailing-slash form both 308 to the bare one — the
+table's word is now the platform's word. Running the contract is also what found a flaw in the
+contract itself: R19's first form grepped to the closing quote, so a `srcset` handed it `640w,` as a
+URL and it reported `000` for a file nobody named. Fixed above. `dist/` still matches the source at
+23 files, 3,758.7 KB, and 102 tests pass.
+
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 
 | # | Where | Do | Verified by |
@@ -272,6 +289,7 @@ the build's.
 | ② | Cloudflare zone → bot/Content-Signals managed robots | **disable** the managed robots.txt injection | `robots.txt` size 611 B, `Content-Signal` gone |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
 | ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem | it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
+| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off**. It rewrites both `mailto:info@datawego.nl` into `/cdn-cgi/l/email-protection#…` and injects `email-decode.min.js`, so R2's claim that the address is in the HTML rather than after a script runs is false as served — and a retrieval crawler that does not run JavaScript never sees the contact route at all. Off is also what ADR 0011's "the address, in the bytes" intent asks for | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2 | 
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
 
 ## Definition of Done
