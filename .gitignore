@@ -35,3 +35,8 @@ node_modules/
 
 # ── Local dev secrets for Pages Functions (never commit) ─
 .dev.vars
+
+# ── infrastructure exports that are not the website's ───
+# A zone export from Cloudflare. The plan cites the two CNAME rows it proves;
+# the file also names the owner's tunnel hosts, which are not this repo's business.
+docs/datawego.nl.txt
