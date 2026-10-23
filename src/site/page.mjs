@@ -239,6 +239,83 @@ function translateScriptStrings(html, { lookup, problems }) {
   return out + html.slice(cursor);
 }
 
+/**
+ * The chrome split (ADR 0004): what is identical at every address stops being
+ * part of the document and becomes a file the browser fetches once.
+ *
+ * The authored file keeps its inline CSS and JS — it is a prototype, and it is
+ * what a reader opens to see the page. Only the emitted page is split, which is
+ * also why a generated page opened from disk is unstyled: its chrome is beside
+ * it rather than inside it, and the paths are absolute by design so that all ten
+ * addresses name the same two files.
+ *
+ * Two blocks, one rule each:
+ *
+ * - every `<style>` in the head, joined in document order, becomes the
+ *   stylesheet. A `<style>` inside `<body>` is refused rather than folded in:
+ *   that would be one page's own CSS, and ADR 0004 shares chrome, not secrets;
+ * - the inline `<script>` after `</head>` becomes the behaviour file. The one in
+ *   the head stays inline, because it resolves the theme before first paint and
+ *   a file that has to be fetched before the page is legible defeats the point.
+ *
+ * The build replaces the tokens with the hashed names, so nothing here can know
+ * a filename, and a token left unsubstituted is a failed build.
+ */
+export const CHROME_TOKENS = Object.freeze({ css: "{{CHROME_CSS}}", js: "{{CHROME_JS}}" });
+
+function spans(html, open, close, after = 0) {
+  const found = [];
+  let i = after;
+  while (true) {
+    const start = html.indexOf(open, i);
+    if (start === -1) break;
+    const stop = html.indexOf(close, start);
+    if (stop === -1) break;
+    found.push({ start, stop, body: html.slice(start + open.length, stop), end: stop + close.length });
+    i = stop + close.length;
+  }
+  return found;
+}
+
+function splitChrome(html, problems) {
+  const headEnd = html.indexOf("</head>");
+  if (headEnd === -1) {
+    problems.push("the page has no </head>, so the chrome cannot be told from the copy");
+    return { html, chrome: {} };
+  }
+
+  const styles = spans(html, "<style>", "</style>");
+  if (!styles.length) {
+    problems.push("there is no <style> to externalise — is this still the authored Page source?");
+    return { html, chrome: {} };
+  }
+  if (styles.some((block) => block.start > headEnd)) {
+    problems.push("a <style> in the body is one page's own CSS, which ADR 0004 does not share");
+    return { html, chrome: {} };
+  }
+
+  const scripts = spans(html, "<script>", "</script>", headEnd);
+  if (scripts.length !== 1) {
+    problems.push(
+      `the body holds ${scripts.length} inline <script> blocks, and the behaviour file is one file: two would change what runs first when they become one fetch`,
+    );
+    return { html, chrome: {} };
+  }
+
+  // Joined with a newline rather than nothing, because two blocks concatenated
+  // edge to edge can merge one block's last declaration into the next rule — and
+  // because the whole point of the file is that its order is its meaning.
+  const chrome = { css: styles.map((block) => block.body).join("\n"), js: scripts[0].body };
+  let out = html;
+  for (const block of [...styles, scripts[0]].sort((a, b) => b.start - a.start)) {
+    const tag = block === scripts[0]
+      ? `<script src="${CHROME_TOKENS.js}" defer></script>`
+      : `<link rel="stylesheet" href="${CHROME_TOKENS.css}" />`;
+    out = out.slice(0, block.start) + tag + out.slice(block.end);
+  }
+  return { out, chrome };
+}
+
 /** The `<head>` block the route table owes this variant, in declaration order. */
 export function headBlock({ route, lang, title, description }) {
   const lines = [
@@ -297,11 +374,6 @@ export function renderVariant({ route, lang, source }) {
 
   let html = source;
   for (const edit of retirements(lang)) html = applyEdit(html, edit, problems);
-  if (/var NL = \{/.test(html)) problems.push("the Dutch dictionary is still in the emitted page");
-  if (/\brenderLang\b/.test(html)) problems.push("renderLang is still defined or called");
-  if (/localStorage\.getItem\("datawego-lang"\)/.test(html)) problems.push("the language choice is still read from localStorage");
-  if (/localStorage\.setItem\(LANG_KEY/.test(html)) problems.push("the language choice is still written to localStorage");
-  if (/\bL\(/.test(html.replace(/\bparseFloat\(/g, ""))) problems.push("a dictionary lookup call survived into the emitted page");
 
   const title = lang === ROOT_LANG ? pageMeta.titleNl : authored.title;
   const description = lang === ROOT_LANG ? pageMeta.descNl : authored.description;
@@ -313,7 +385,19 @@ export function renderVariant({ route, lang, source }) {
     html = translateScriptStrings(html, { lookup, problems });
   }
 
-  return { html, problems, title, description, dictionaryKeys: Object.keys(entries).length };
+  // Last, so every edit above still sees the document as it was authored. What
+  // the guards refuse has to be searched for in the chrome as well as the HTML:
+  // after this line the script is a separate string, and a runtime that moved
+  // into a cached file rather than being deleted would be invisible to the page.
+  const { out, chrome } = splitChrome(html, problems);
+  const shipped = out + Object.values(chrome).join("");
+  if (/var NL = \{/.test(shipped)) problems.push("the Dutch dictionary is still being shipped, page or chrome alike");
+  if (/\brenderLang\b/.test(shipped)) problems.push("renderLang survives its retirement, page or chrome alike");
+  if (/localStorage\.getItem\("datawego-lang"\)/.test(shipped)) problems.push("the language choice is still read from localStorage");
+  if (/localStorage\.setItem\(LANG_KEY/.test(shipped)) problems.push("the language choice is still written to localStorage");
+  if (/\bL\(/.test(shipped.replace(/\bparseFloat\(/g, ""))) problems.push("a dictionary lookup call survived into what the page ships");
+
+  return { html: out, chrome, problems, title, description, dictionaryKeys: Object.keys(entries).length };
 }
 
 /** Rewrite the authored title + description pair into the full head block. */

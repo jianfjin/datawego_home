@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import { company } from "./src/site/company.mjs";
 import { ROUTES, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
-import { renderVariant, sourceProblems } from "./src/site/page.mjs";
+import { CHROME_TOKENS, renderVariant, sourceProblems } from "./src/site/page.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
@@ -66,7 +66,7 @@ function generate() {
           problems.push(`${route.key}.${lang}:\n    - ${out.problems.join("\n    - ")}`);
           continue;
         }
-        files.set(distPath(route, lang), out.html);
+        files.set(distPath(route, lang), linkChrome(out, files));
       }
       continue;
     }
@@ -81,10 +81,37 @@ function generate() {
     files.set(distPath(route, "nl"), read(from));
   }
 
+  for (const [name, bytes] of files) {
+    const leaked = Object.values(CHROME_TOKENS).find((token) => String(bytes).includes(token));
+    if (leaked) problems.push(`${name} still holds ${leaked} — the chrome was rendered but never linked`);
+  }
+
   if (ONLY === "pages" || ONLY === null) copyTree("resources", files);
   files.set("_routes.json", ROUTES_JSON);
 
   return { files, problems };
+}
+
+/**
+ * Name the chrome by what it contains, and point the page at it.
+ *
+ * Two variants whose CSS is identical get one file, because the hash is the
+ * contents and the contents are the same — which is the whole of ADR 0004 in
+ * four lines: a visitor who reads three pages of either language fetches the
+ * stylesheet once. The behaviour file differs per language by construction (the
+ * sentences the form says are in the page's own language), so it lands as two
+ * files, and each visitor downloads the one they will ever be shown.
+ */
+function linkChrome(rendered, files) {
+  let html = rendered.html;
+  for (const [kind, contents] of Object.entries(rendered.chrome)) {
+    const token = CHROME_TOKENS[kind];
+    if (!token) throw new Error(`renderVariant emitted chrome of kind "${kind}", which build.mjs has no name for`);
+    const name = `assets/site.${digest(contents)}.${kind}`;
+    if (!files.has(name)) files.set(name, contents);
+    html = html.split(token).join(`/${name}`);
+  }
+  return html;
 }
 
 /** The authored source behind a route. One per Page for now; U9 adds the others. */

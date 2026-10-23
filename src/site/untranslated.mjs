@@ -62,8 +62,6 @@ export const LEDGER = Object.freeze({
   "www.datawego.nl": { kind: "not copy", why: "a host name" },
   "info@datawego.nl": { kind: "not copy", why: "an email address, and the KvK number's partner in ADR 0009" },
   "KVK-nummer: 42077839": { kind: "not copy", why: "already Dutch, and a registry number" },
-  "Spieringdam 1": { kind: "not copy", why: "decision A takes this line and the one below out of the footer (U3); when they go, this ledger entry must go with them" },
-  "2492 ND Den Haag": { kind: "not copy", why: "a postal address, until decision A removes it" },
 });
 
 export const LEDGER_KINDS = Object.freeze(["name", "same in dutch", "not copy"]);

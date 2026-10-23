@@ -1,5 +1,9 @@
 /**
- * Guard tests for the generator (U2).
+ * Guard tests for the generator (U2, U3).
+ *
+ * U3 adds the claim that whatever is identical at every address stops being
+ * inside the document (ADR 0004), which is why half of these assertions read a
+ * page and its chrome together rather than the page alone.
  *
  * U2's claim is narrow and load-bearing: the two addresses the site ships today
  * carry their own language's prose in the served bytes with no JavaScript run
@@ -38,7 +42,14 @@ import {
 import { makeLookup, readDictionary } from "../src/site/dictionary.mjs";
 import { applyDictionary, encodeText } from "../src/site/markup.mjs";
 import { isLedgered } from "../src/site/untranslated.mjs";
-import { languageSwitch, PAGE_SOURCES, renderVariant, sourceProblems, visibleStrings } from "../src/site/page.mjs";
+import {
+  CHROME_TOKENS,
+  languageSwitch,
+  PAGE_SOURCES,
+  renderVariant,
+  sourceProblems,
+  visibleStrings,
+} from "../src/site/page.mjs";
 
 const ROOT = new URL("..", import.meta.url);
 const read = (relative) => fs.readFileSync(new URL(relative, ROOT), "utf8");
@@ -72,6 +83,11 @@ function renderWith(lang, edit) {
 
 function inlineScripts(html) {
   return [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+}
+
+/** Everything one variant sends: the document, plus the files beside it. */
+function shipped(rendered) {
+  return rendered.html + Object.values(rendered.chrome).join("");
 }
 
 /** Every visible string in `html` that a dictionary key could have replaced. */
@@ -256,18 +272,25 @@ test("the language switch became two links, and marks the one being read", () =>
   }
 });
 
-test("every inline script in every variant still parses", () => {
+test("every script a variant runs parses, inline or fetched", () => {
   // The regression this exists for: three script regions were spliced one after
   // another, each into a string the previous splice had already resized, so the
   // Dutch home page shipped a contact form whose script read
   // `…};again."\n  };` and died at the first line. HTML stays valid when that
   // happens. JavaScript does not.
+  //
+  // U3 is why this reads two places now. The behaviour left the document for a
+  // cached file, so the same stale-offset splice that once broke a page breaks
+  // an asset instead — and that is worse, because the page still looks right
+  // until a visitor presses send.
   for (const lang of LANGS) {
-    const scripts = inlineScripts(variant(lang).html);
-    assert.ok(scripts.length >= 2, `${lang}: expected the boot script and the form script`);
-    scripts.forEach((code, i) => {
+    const { html, chrome } = variant(lang);
+    const inline = inlineScripts(html);
+    assert.equal(inline.length, 1, `${lang}: the theme boot is the only script left inside the document`);
+    assert.ok(chrome.js.length > 1000, `${lang}: nothing was externalised, so ADR 0004 did not happen`);
+    [...inline, chrome.js].forEach((code, i) => {
       assert.doesNotThrow(() => new vm.Script(code), {
-        message: `${lang}: inline script #${i} does not parse — the generator wrote over itself`,
+        message: `${lang}: script #${i} does not parse — the generator wrote over itself`,
       });
     });
   }
@@ -278,8 +301,8 @@ test("the sentences that lived in JavaScript are Dutch where they are shown", ()
   // the send-status panel, the field prompts, the theme button's label. A
   // page whose prose is Dutch and whose error messages are English is the
   // half-translation ADR 0003 was written against.
-  const nl = variant("nl").html;
-  const en = variant("en").html;
+  const nl = shipped(variant("nl"));
+  const en = shipped(variant("en"));
   for (const [english, dutch] of [
     ["Sent. We'll reply to the address you gave.", "Verstuurd. We antwoorden op het adres dat je opgaf."],
     ["The security check isn't ready yet", "De beveiligingscontrole is nog niet klaar"],
@@ -366,6 +389,90 @@ test("the source as committed is on speaking terms with both mechanisms", () => 
   assert.deepEqual(sourceProblems(SOURCE), [], "the ledger and the dictionary are both current");
 });
 
+// ── the chrome is shared by address (ADR 0004) ──────────────────────────────
+
+test("the two variants link one stylesheet and their own behaviour file", () => {
+  // ADR 0004 in one line: what is identical at every address is fetched once.
+  // The hash is the contents, so "identical" is what makes it one file rather
+  // than two with the same bytes, and a link to a name this build never wrote
+  // is a 404 no page would ever show.
+  const { files } = generate();
+  const sheets = [...files.keys()].filter((name) => name.endsWith(".css"));
+  const behaviours = [...files.keys()].filter((name) => name.endsWith(".js"));
+  assert.equal(sheets.length, 1, `the CSS is identical at both addresses, so it must be one file: ${JSON.stringify(sheets)}`);
+  assert.equal(behaviours.length, 2, "the sentences the form says are in the page's own language, so behaviour is one file per variant");
+
+  const nl = variant("nl");
+  const en = variant("en");
+  assert.equal(nl.chrome.css, en.chrome.css, "the variants styled themselves differently, so the stylesheet is not shared after all");
+  assert.notEqual(nl.chrome.js, en.chrome.js, "the behaviour files are byte-identical, so they were never split per language");
+
+  // The links are read off what the build writes rather than off renderVariant,
+  // because naming the chrome is the build's job: a rendered page holds a token
+  // until linkChrome turns it into a path, and the token is not an address.
+  for (const [lang, rendered] of [["nl", nl], ["en", en]]) {
+    const page = files.get(distPath(home, lang));
+    assert.ok(page, `no page was written for ${lang}`);
+    for (const [kind, ext] of [["css", "css"], ["js", "js"]]) {
+      const href = new RegExp(`(?:href|src)="(/assets/site\\.[0-9a-f]{12}\\.${ext})"`).exec(page)?.[1];
+      assert.ok(href, `${urlOf("home", lang)} links no ${ext === "css" ? "stylesheet" : "behaviour file"}`);
+      // An absolute path in the page, a dist-relative name in the build: the
+      // leading slash is the difference between serving and writing.
+      assert.ok(files.has(href.slice(1)), `${urlOf("home", lang)} links ${href}, which this build did not write`);
+      assert.equal(files.get(href.slice(1)), rendered.chrome[kind], `${urlOf("home", lang)}: ${href} is not the chrome rendered for it`);
+    }
+  }
+});
+
+test("what is emitted carries no chrome of its own, and no token waiting for a name", () => {
+  // R9's first half, and the reason a generated page opened from disk is
+  // unstyled on purpose: the chrome sits beside the file, addressed absolutely,
+  // because every address is meant to name the same two files.
+  for (const lang of LANGS) {
+    const { html } = variant(lang);
+    assert.ok(!/<style[\s>]/.test(html), `${lang}: a <style> survived the split, so this page carries its own CSS`);
+    assert.equal(
+      inlineScripts(html).filter((code) => code.includes("addEventListener")).length,
+      0,
+      `${lang}: behaviour is still running from inside the document`,
+    );
+  }
+  assert.ok(SOURCE.includes("<style>"), "the authored file keeps its CSS inline — U3 splits what is emitted, not what is written");
+  for (const [name, bytes] of generate().files) {
+    const token = Object.values(CHROME_TOKENS).find((candidate) => String(bytes).includes(candidate));
+    assert.ok(!token, `${name} still holds ${token}, which a browser would ask for as a file and be answered with 404`);
+  }
+});
+
+test("a split that would be wrong is refused rather than guessed at", () => {
+  // Two shapes change what a visitor runs, quietly: a second behaviour block,
+  // whose order becomes a question about which file the cache answered, and one
+  // page's own CSS, which belongs in no file that is shared by address.
+  const second = renderWith("nl", (source) => source.replace("</body>", "<script>var extra = 1;</script>\n</body>"));
+  assert.ok(
+    second.problems.some((problem) => problem.includes("the behaviour file is one file")),
+    `expected a two-script refusal, got:\n  - ${second.problems.join("\n  - ")}`,
+  );
+
+  const ownCss = renderWith("nl", (source) => source.replace("</body>", "<style>.extra { color: red; }</style>\n</body>"));
+  assert.ok(
+    ownCss.problems.some((problem) => problem.includes("one page's own CSS")),
+    `expected a body-style refusal, got:\n  - ${ownCss.problems.join("\n  - ")}`,
+  );
+});
+
+test("a runtime that moved into the chrome instead of being deleted is still caught", () => {
+  // R13 was measured on the document while the document was everything. Once
+  // the behaviour became a file, that promise needs the file in scope too —
+  // otherwise the language machinery survives in a cached asset no page names.
+  const out = renderWith("nl", (source) => source.replace("  var S = {", "  var NL = {};\n  var S = {"));
+  assert.ok(out.chrome.js.includes("var NL = {"), "and the runtime did land in the chrome, which is what this test is for");
+  assert.ok(
+    out.problems.some((problem) => problem.includes("page or chrome alike")),
+    `expected the guard to read the chrome as well, got:\n  - ${out.problems.join("\n  - ")}`,
+  );
+});
+
 // ── the files the build claims to write ─────────────────────────────────────
 
 test("every name the build emits is a path inside dist/", () => {
@@ -387,7 +494,7 @@ test("an address maps to a file the way Pages expects to find it", () => {
   assert.equal(distPath(diagram, "nl"), path.join("docs", "pharm-platform.html"));
 });
 
-test("today's build is two pages, four diagrams, the Functions routing map, and the images", () => {
+test("today's build is two pages, four diagrams, the chrome, the routing map, and the images", () => {
   const { files } = generate();
   const pages = [...files.keys()].filter((name) => name.endsWith("index.html")).sort();
   assert.deepEqual(pages, ["en/index.html", "index.html"], "Stage 1 ships two addresses and no more");
@@ -401,6 +508,16 @@ test("today's build is two pages, four diagrams, the Functions routing map, and 
     assert.ok(files.has(name), `${name} was not copied`);
     const original = fs.readFileSync(new URL(`../docs/${path.basename(route.path.nl)}`, import.meta.url));
     assert.ok(Buffer.from(files.get(name)).equals(original), `${name} was rewritten; the diagrams' drawings are out of scope (R8)`);
+  }
+
+  const chrome = [...files.keys()].filter((name) => name.startsWith("assets/"));
+  assert.equal(chrome.length, 3, "one stylesheet shared by both addresses, one behaviour file each (ADR 0004)");
+  for (const name of chrome) {
+    assert.match(
+      name,
+      /^assets\/site\.[0-9a-f]{12}\.(css|js)$/,
+      `${name} is not named after what it contains, so it cannot be cached forever (R9)`,
+    );
   }
 
   const assets = [...files.keys()].filter((name) => name.startsWith("resources/"));
@@ -438,14 +555,20 @@ test("the company facts the head states are the register's", () => {
   // Nothing in a variant may state a company fact the register does not carry.
   assert.ok(variant("nl").html.includes(company.name));
   assert.match(variant("nl").html, new RegExp(`<meta property="og:site_name" content="${company.name}"`));
-  // Decision A, taken 2026-10-23: the street line leaves the footer and the
-  // register stays at city level. U3 makes the first half, so what has to be
-  // true now is that the two halves cannot be undone apart. Whichever side of
-  // the change a later edit forgets, one of these two assertions catches.
+  // Decision A, taken 2026-10-23 and made by U3: the street left the footer,
+  // and the two ledger entries naming its first lines and the dictionary key
+  // translating its third left with it. What has to stay true is that the
+  // address cannot come back on one side only. Re-add the footer line and it is
+  // unledgered English in the Dutch variant; re-add an entry or the key and
+  // sourceProblems refuses a string the source no longer shows.
   const street = ["Spieringdam 1", "2492 ND Den Haag", "The Netherlands"];
-  const shown = street.filter((line) => SOURCE_STRINGS.has(line));
-  const excused = street.filter((line) => isLedgered(line) || Object.hasOwn(entries, line));
-  assert.deepEqual(shown, excused, "the footer address, its two ledger entries and the dictionary key for its third line are one change (decision A)");
-  assert.equal(company.streetAddress, null, "the city, not the street (ADR 0011's second amendment)");
-  assert.equal(shown.length, 3, "and today the page does still show all three, because U3 has not run")
+  assert.deepEqual(street.filter((line) => SOURCE_STRINGS.has(line)), [], "the footer states the city, not the street");
+  assert.deepEqual(
+    street.filter((line) => isLedgered(line) || Object.hasOwn(entries, line)),
+    [],
+    "the ledger and the dictionary gave up the address when the page did (one change)",
+  );
+  assert.ok(!SOURCE.includes("Spieringdam"), "nor does the authored file keep it as a second copy of anything");
+  assert.equal(company.streetAddress, null, "and the register never had it (ADR 0011's second amendment)");
+  assert.ok(variant("nl").html.includes("Den Haag"), "the city is still stated, in Dutch, at the Dutch address");
 });
