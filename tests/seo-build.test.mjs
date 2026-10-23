@@ -27,7 +27,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 
-import { generate, distPath, pageSourceFor } from "../build.mjs";
+import { generate, distPath, pageSourceFor, shipAssets } from "../build.mjs";
 import { company } from "../src/site/company.mjs";
 import {
   LANGS,
@@ -704,7 +704,7 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, th
     assert.ok(Buffer.from(files.get(name)).equals(original), `${name} was rewritten; the diagrams' drawings are out of scope (R8)`);
   }
 
-  const chrome = [...files.keys()].filter((name) => name.startsWith("assets/"));
+  const chrome = [...files.keys()].filter((name) => /^assets\/site\./.test(name));
   assert.equal(chrome.length, 3, "one stylesheet shared by both addresses, one behaviour file each (ADR 0004)");
   for (const name of chrome) {
     assert.match(
@@ -714,21 +714,59 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, th
     );
   }
 
+  // Artwork moves into `assets/` beside the chrome, because it earns the same
+  // thing: a name that follows its bytes. `/assets/*` may then call itself
+  // immutable without lying, and a replaced banner arrives as a new URL instead
+  // of a stale one. What a person edits is still the name in `resources/`.
+  const artwork = [...files.keys()].filter((name) => name.startsWith("assets/") && !chrome.includes(name));
+  for (const name of artwork) {
+    assert.match(
+      name,
+      /^assets\/[a-z0-9][a-z0-9._-]*\.[0-9a-f]{12}\.(webp|jpg|jpeg|png|svg)$/,
+      `${name} is not named after what it contains, so it cannot be cached forever (R9)`,
+    );
+  }
+  assert.deepEqual(
+    artwork.map((name) => name.replace("assets/", "").replace(/\.[0-9a-f]{12}\./, ".")).sort(),
+    ["apple-touch-icon.png", "favicon-32.png", "favicon.svg", "hero-1028.webp", "hero-1542.webp", "hero-2056.webp", "hero-640.webp", "logo.svg", "og-image.jpg"],
+    "four hero widths, the mark, the favicon set, the social card — a different list is a different site",
+  );
+  assert.equal(
+    [...files.keys()].filter((name) => name.startsWith("resources/")).length,
+    0,
+    "nothing under resources/ ships. It holds 15.7MB, six identical copies of the footer PNG among it, and a page asks for two files (R10)",
+  );
+  assert.ok(
+    ![...files.keys()].some((name) => name.includes("DataWeGo_banner3")),
+    "the banner the WebP files derive from is named once, in a comment, and a comment is not a request",
+  );
+
+  // The Definition of Done's "under a tenth", measured against the artwork that
+  // is still on disk under the name the page carried before U5.
+  const authored = (file) => fs.readFileSync(new URL(`../resources/${file}`, import.meta.url)).byteLength;
+  const heroes = artwork.filter((n) => n.includes("hero-")).map((n) => Buffer.byteLength(files.get(n)));
+  assert.ok(
+    Math.max(...heroes) * 10 < authored("DataWeGo_banner3.png"),
+    `the widest hero candidate is ${Math.max(...heroes)} B; a tenth of the PNG it replaced is ${Math.round(authored("DataWeGo_banner3.png") / 10)} B`,
+  );
+  assert.ok(
+    Buffer.byteLength(files.get(artwork.find((n) => n.startsWith("assets/logo.")))) * 10 < authored("DataWeGo_Logo.png"),
+    "the footer mark costs under a tenth of the PNG it replaced",
+  );
+
   for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html"]) {
     assert.ok(files.has(name), `${name} was not written, so a crawler reads whatever the host has in its place`);
     assert.ok(!name.endsWith(".html") || name === "404.html", `${name}: only the not-found page is HTML outside the address tree (R7)`);
   }
   assert.equal(
-    [...files.keys()].filter((name) => !name.startsWith("resources/")).length,
-    14,
-    "two pages, four diagrams, three chrome files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
+    files.size,
+    23,
+    "two pages, four diagrams, three chrome files, nine artwork files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
   );
-
-  const assets = [...files.keys()].filter((name) => name.startsWith("resources/"));
-  assert.ok(assets.length >= 2, "the page's own images were not copied, so they would 404 where they are served");
-  for (const name of assets) {
-    const onDisk = fs.readFileSync(new URL(`../${name}`, import.meta.url));
-    assert.ok(Buffer.from(files.get(name)).equals(onDisk), `${name} is not the file on disk`);
+  for (const name of artwork) {
+    const logical = name.replace(/\.[0-9a-f]{12}\./, ".").replace("assets/", "resources/");
+    const onDisk = fs.readFileSync(new URL(`../${logical}`, import.meta.url));
+    assert.ok(Buffer.from(files.get(name)).equals(onDisk), `${name} is not ${logical} as it sits on disk`);
   }
 });
 
@@ -775,4 +813,62 @@ test("the company facts the head states are the register's", () => {
   assert.ok(!SOURCE.includes("Spieringdam"), "nor does the authored file keep it as a second copy of anything");
   assert.equal(company.streetAddress, null, "and the register never had it (ADR 0011's second amendment)");
   assert.ok(variant("nl").html.includes("Den Haag"), "the city is still stated, in Dutch, at the Dutch address");
+});
+
+test("the hero is asked for in widths, and the browser is the one that chooses", () => {
+  const { files } = generate();
+  const tag = /<img\b[^>]*\/>[\s\S]{0,40}?figcaption/.exec(String(files.get("index.html")));
+  assert.ok(tag, "the hero image is no longer where the banner figure begins");
+  const hero = tag[0];
+
+  assert.match(hero, /\bfetchpriority="high"/, "the largest paint on the page asks to be fetched first (R10)");
+  assert.match(hero, /\bsizes="100vw"/, "the banner is full-bleed, so the widths are worth a viewport (R10)");
+  assert.match(hero, /\bloading="eager"/, "a lazy hero is a hero that arrives late");
+  assert.match(hero, /\bwidth="2056" height="491"/, "no dimensions means the layout jumps when it lands (R10)");
+
+  // Measured on what the browser is handed, after the build renamed every file
+  // to its bytes: the descriptor has to be the width actually encoded, or a
+  // candidate is picked for a resolution it cannot deliver.
+  const candidates = [...hero.matchAll(/assets\/hero-(\d+)\.[0-9a-f]{12}\.webp (\d+)w/g)];
+  assert.deepEqual(candidates.map((m) => Number(m[2])), [640, 1028, 1542, 2056], "the srcset's declared widths");
+  assert.deepEqual(candidates.map((m) => Number(m[1])), [640, 1028, 1542, 2056], "each candidate is named for its own pixels, and each was written to dist/");
+  const fallback = /src="assets\/hero-(\d+)\.[0-9a-f]{12}\.webp"/.exec(hero);
+  assert.ok(fallback, "the src is not one of the candidates");
+  assert.ok(candidates.map((m) => m[1]).includes(fallback[1]), "the fallback has to be a candidate the browser would also accept");
+});
+
+test("an artwork reference is a request, and a mention is not", () => {
+  // The bug this pins: the page's own comment names the 1.4MB PNG the hero WebP
+  // files were derived from, in order to be honest about where they came from.
+  // Prose that can put a file on the network is a file list nobody can read.
+  const files = new Map([
+    ["index.html", '<!-- derived from resources/DataWeGo_banner3.png --><img src="resources/logo.svg" />'],
+  ]);
+  const problems = [];
+  shipAssets(files, problems);
+
+  assert.deepEqual(problems, [], "a name in a comment is not a missing-file problem");
+  assert.ok(
+    ![...files.keys()].some((name) => name.includes("banner3")),
+    "the commented-out provenance shipped the PNG anyway",
+  );
+  assert.ok(
+    files.get("index.html").includes("<!-- derived from resources/DataWeGo_banner3.png -->"),
+    "the rewrite moved the prose as well as the request, which is how the honesty gets lost",
+  );
+  assert.match(files.get("index.html"), /src="assets\/logo\.[0-9a-f]{12}\.svg"/, "the request was not rewritten to its content name");
+});
+
+test("artwork a page asks for that is not in the repository stops the build", () => {
+  // tools/derive-images.py is run by hand, which makes it forgettable. A page
+  // naming a hero width that was never encoded is the failure worth refusing.
+  const files = new Map([["index.html", '<img src="resources/hero-9999.webp" />']]);
+  const problems = [];
+  shipAssets(files, problems);
+  assert.equal(
+    problems.filter((p) => p.includes("resources/hero-9999.webp")).length,
+    1,
+    "a request for artwork that does not exist has to be a failed build, not a broken image",
+  );
+  assert.match(problems.join("\n"), /derive-images\.py/, "and it has to say where the artwork comes from");
 });

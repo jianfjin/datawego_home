@@ -28,6 +28,22 @@ const DIST = path.join(ROOT, "dist");
 const CHECK = process.argv.includes("--check");
 const ONLY = flagValue("--only");
 
+/**
+ * An artwork *reference*, as opposed to an artwork mentioned in prose. A page
+ * names where a file lives in an attribute; a comment names where a file came
+ * from. Only the first is a request: `resources/DataWeGo_banner3.png` appears in
+ * this repository's HTML exactly once, in the sentence explaining what the hero
+ * WebP files were derived from, and it is 1.4MB of PNG. Shipping a file on the
+ * strength of a sentence is the kind of quiet `--check` exists to prevent.
+ */
+const ASSET_REF = /resources\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp|svg|gif|avif)/g;
+
+function assetReferences(document) {
+  const comments = [...document.matchAll(/<!--[\s\S]*?-->/g)].map((m) => [m.index, m.index + m[0].length]);
+  const insideComment = (offset) => comments.some(([from, to]) => offset >= from && offset < to);
+  return [...document.matchAll(ASSET_REF)].filter((match) => !insideComment(match.index));
+}
+
 const ROUTES_JSON = JSON.stringify({ version: 1, include: ["/api/*"], exclude: [] }, null, 2) + "\n";
 
 function flagValue(name) {
@@ -100,7 +116,7 @@ function generate() {
     for (const [name, contents] of statics.files) files.set(name, contents);
   }
 
-  if (ONLY === "pages" || ONLY === null) copyTree("resources", files);
+  shipAssets(files, problems);
   files.set("_routes.json", ROUTES_JSON);
 
   // Last, so a step added after it cannot leave a token in what this build
@@ -163,21 +179,52 @@ function read(relative) {
 }
 
 /**
- * Copy a source tree into the build under the same name. Reads are collected
- * rather than written, so `--check` compares against the same bytes it would
- * install — and so a wrong prefix becomes a visible problem in one place, the
- * fence in `main`, instead of a build that quietly writes to the source tree.
+ * Ship the artwork the pages actually name, under a name chosen from its bytes.
+ *
+ * `resources/` holds 15.7MB of brand art, and six of its thirteen files are the
+ * same footer PNG by a different name — so copying the directory used to put
+ * 16MB on a visitor who was ever only asked for two images (R10). The reference
+ * is now the declaration instead: what no page names stays in the repository,
+ * what a page names and cannot find fails the build, and every shipped file is
+ * named by its contents, which is what lets `/assets/*` call itself immutable
+ * without lying (ADR 0004). A replaced banner therefore arrives at a new URL,
+ * and nobody has to remember to purge a cache.
  */
-function copyTree(from, files) {
-  const src = path.join(ROOT, from);
-  if (!fs.existsSync(src)) return;
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const absolute = path.join(src, entry.name);
-    if (entry.isDirectory()) {
-      copyTree(`${from}/${entry.name}`, files);
+function shipAssets(files, problems) {
+  const named = new Set();
+  const documents = [];
+  for (const [name, bytes] of files) {
+    const text = String(bytes);
+    const found = assetReferences(text);
+    if (!found.length) continue;
+    documents.push(name);
+    for (const match of found) named.add(match[0]);
+  }
+
+  const renamed = new Map();
+  for (const logical of [...named].sort()) {
+    const absolute = path.join(ROOT, logical);
+    if (!fs.existsSync(absolute)) {
+      problems.push(
+        `${logical} is named by a page and is not in the repository — run \`python3 tools/derive-images.py\`, or stop naming it`,
+      );
       continue;
     }
-    files.set(`${from}/${entry.name}`, fs.readFileSync(absolute));
+    const bytes = fs.readFileSync(absolute);
+    const base = path.basename(logical);
+    const dot = base.lastIndexOf(".");
+    const shipped = `assets/${base.slice(0, dot)}.${digest(bytes)}${base.slice(dot)}`;
+    files.set(shipped, bytes);
+    renamed.set(logical, shipped);
+  }
+
+  for (const name of documents) {
+    const text = String(files.get(name));
+    const requests = new Set(assetReferences(text).map((m) => `${m[0]}@${m.index}`));
+    // The callback's offsets are into the string it was handed, so the comment
+    // ranges and the match ranges are measured on one ruler. Prose keeps naming
+    // the file it came from; only the requests move.
+    files.set(name, text.replace(ASSET_REF, (logical, offset) => (requests.has(`${logical}@${offset}`) ? renamed.get(logical) : logical)));
   }
 }
 
@@ -275,4 +322,4 @@ const bytesOf = (text) => Buffer.byteLength(text);
 const fmt = (n) => (n > 1024 ? `${(n / 1024).toFixed(1)}KB` : `${n}B`);
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
-export { generate, distPath, pageSourceFor };
+export { generate, distPath, pageSourceFor, shipAssets };

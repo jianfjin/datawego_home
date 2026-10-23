@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 6 81 68" width="243" height="204" role="img" aria-label="DataWeGo">
+  <!-- The brand mark, no plate, for the footer. Same geometry as
+       resources/favicon.svg, without the tile: a blue-to-green gradient over D
+       and W, plus the pixel squares that trail them. It replaces a 1,337,366 B
+       PNG shown at 105x70 — the artwork it came from is a gradient raster with no
+       vector source in this repository, so the shading and glow did not cross. -->
+  <defs>
+    <linearGradient id="dw" x1="18" y1="70" x2="91" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a5fd6"/>
+      <stop offset=".45" stop-color="#00b3c8"/>
+      <stop offset=".75" stop-color="#22c07a"/>
+      <stop offset="1" stop-color="#8fd94a"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#dw)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 30v36"/>
+    <path d="M22 30h9a18 18 0 0 1 0 36h-9"/>
+    <path d="M56 30l6 36 8-22 8 22 6-36"/>
+  </g>
+  <g fill="url(#dw)">
+    <rect x="82" y="10" width="9" height="9" rx="2"/>
+    <rect x="69" y="12" width="7" height="7" rx="1.6" opacity=".82"/>
+    <rect x="84" y="23" width="6" height="6" rx="1.4" opacity=".6"/>
+  </g>
+</svg>

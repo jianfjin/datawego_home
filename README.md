@@ -25,7 +25,10 @@ page opened straight from disk has no origin for that request to come from.
   ```sh
   cp .dev.vars.example .dev.vars   # fill in the local values; .dev.vars is never committed
   node deploy.js --skip-deploy     # generate dist/ — both variants, the chrome, diagrams,
-  #   robots.txt, sitemap.xml, 404.html, _headers, _routes.json
+  #   robots.txt, sitemap.xml, 404.html, _headers, _routes.json, and the artwork
+  #   the pages ask for
+  python3 tools/derive-images.py   # re-derive hero widths, icons and the social card,
+  #   by hand, when the brand artwork under resources/ changes
   npx wrangler pages dev           # http://localhost:8788 — page and Function together
   node --test                      # the endpoint's guards, the route table, the build
   ```
@@ -64,11 +67,21 @@ page opened straight from disk has no origin for that request to come from.
 │   ├── 404.html                 #   so an unknown address is a 404 in Dutch, not the homepage (R7)
 │   ├── _headers                 #   HSTS, immutable chrome, and never an X-Robots-Tag (ADR 0006, R9)
 │   ├── docs/                    #   the four Diagram pages: served and linked, `noindex, follow` (ADR 0002)
-│   └── assets/                  #   site.css + site.js, named by their contents, shared by address
-├── resources/                   # brand imagery (banner + logo variants)
-│   ├── DataWeGo_banner.png      #   hero banner
-│   ├── DataWeGo_Logo.png        #   footer brand mark
-│   └── DataWeGo_Logo-1..5.png   #   unused logo variants kept for reference
+│   ├── assets/                  #   chrome *and* artwork, every file named by its contents
+│   └── (no resources/)          #   what no page asks for is not uploaded
+├── tools/
+│   └── derive-images.py         # brand artwork in, shipped artwork out; run by hand, never by the build
+├── resources/                   # the authored originals, and what derives from them
+│   ├── DataWeGo_banner3.png     #   the hero's source art: 2056x491, 1.4MB, never shipped
+│   ├── hero-{640,1028,1542,2056}.webp  # the four widths a browser chooses between (R10)
+│   ├── DataWeGo_Logo.png        #   the footer mark's source art: 1536x1024, 1.3MB, never shipped
+│   ├── logo.svg                 #   the mark it became: 1.2KB, and the same drawing as the icon
+│   ├── favicon.svg              #   the mark on a plate, for the tab and any reader that asks for SVG
+│   ├── favicon-32.png           #   rasterised from the SVG, for the readers that cannot
+│   ├── apple-touch-icon.png     #   ditto, 180, because iOS wants a square with no transparency
+│   ├── og-image.jpg             #   1200x630 social card: the brand band over the mark
+│   └── DataWeGo_banner{,1,2}.png, DataWeGo_Logo-1..5.png, datawego1.png,
+│       Developer_Desk_with_Erasmus_Bridge_View.png  # kept for reference; no page names them
 └── docs/                        # design-handoff material
     ├── DESIGN-HANDOFF.md        #   implementation contract (fidelity, responsive matrix)
     └── DESIGN-MANIFEST.json     #   machine-readable map of screens, tokens, interactions
@@ -132,7 +145,22 @@ lets traffic through rather than blocking it.
 `docs/DESIGN-HANDOFF.md` is the source of truth for porting this prototype to
 production code: preserve tokens, geometry, copy, interaction states, and
 accessibility semantics rather than reinterpreting them. All imagery is
-project-local (`resources/`) — no remote hotlinks.
+project-local — no remote hotlinks.
+
+**What an image costs, and who decides.** A page asks for artwork in an
+attribute; `build.mjs` reads those requests, copies the bytes into
+`dist/assets/<name>.<contents>.<ext>` and rewrites the request to the new name.
+Three things follow. A file no page asks for is never uploaded — `resources/`
+holds 15.7MB and eleven of its files, six of them identical copies of the same
+footer PNG, were shipping to nobody. A file a page does ask for had better exist,
+or the build refuses and says to run `tools/derive-images.py`. And every shipped
+image is named by what it contains, which is the only reason `/assets/*` may
+promise `immutable` (ADR 0004, R9) — replacing the banner is a new URL, not a
+year of cache to purge.
+
+Prose does not count as a request. The page's own comment says the hero WebP
+files were derived from `resources/DataWeGo_banner3.png`, and that sentence used
+to be a 1.4MB file on the strength of itself.
 
 ## Repository housekeeping
 

@@ -35,6 +35,23 @@ const HTML_LANG = Object.freeze({ nl: "nl", en: "en" });
 /** `og:locale` insists on a region. `en_US` is the least-bad answer, and is flagged. */
 const OG_LOCALE = Object.freeze({ nl: "nl_NL", en: "en_US" });
 
+/**
+ * The icons and the social card, named once, by the file a person edits.
+ *
+ * Repository paths rather than addresses, on purpose: the build names every
+ * shipped artwork file from what its bytes contain (ADR 0004), so a URL written
+ * here would be a guess about a hash — and a guess that stays green when the
+ * artwork is replaced under its own name.
+ */
+const SITE_ICONS = Object.freeze([
+  { rel: "icon", href: "resources/favicon.svg", type: "image/svg+xml", sizes: "any" },
+  { rel: "icon", href: "resources/favicon-32.png", type: "image/png", sizes: "32x32" },
+  { rel: "apple-touch-icon", href: "resources/apple-touch-icon.png", sizes: "180x180" },
+]);
+
+/** 1200x630 is the ratio every reader that asks for a card at all agrees on. */
+const SOCIAL_CARD = Object.freeze({ href: "resources/og-image.jpg", width: 1200, height: 630 });
+
 const LETTER = /[a-z]/i;
 
 /**
@@ -365,12 +382,28 @@ export function headBlock({ route, lang, title, description }) {
     lines.push(`<link rel="alternate" hreflang="${alt.lang === "x-default" ? "x-default" : HTML_LANG[alt.lang]}" href="${alt.href}" />`);
   }
   lines.push(`<meta name="robots" content="${route.indexable ? "index, follow" : "noindex, follow"}" />`);
+  for (const icon of SITE_ICONS) {
+    const attrs = [`rel="${icon.rel}"`, `href="${icon.href}"`];
+    if (icon.type) attrs.push(`type="${icon.type}"`);
+    if (icon.sizes) attrs.push(`sizes="${icon.sizes}"`);
+    lines.push(`<link ${attrs.join(" ")} />`);
+  }
   lines.push(`<meta property="og:type" content="${route.kind === "page" ? "website" : "article"}" />`);
   lines.push(`<meta property="og:site_name" content="${attr(company.name)}" />`);
   lines.push(`<meta property="og:locale" content="${OG_LOCALE[lang]}" />`);
   lines.push(`<meta property="og:title" content="${attr(title)}" />`);
   lines.push(`<meta property="og:description" content="${attr(description)}" />`);
   lines.push(`<meta property="og:url" content="${urlOf(route.key, lang)}" />`);
+  lines.push(`<meta property="og:image" content="${company.origin}/${SOCIAL_CARD.href}" />`);
+  lines.push(`<meta property="og:image:width" content="${SOCIAL_CARD.width}" />`);
+  lines.push(`<meta property="og:image:height" content="${SOCIAL_CARD.height}" />`);
+  // What the card literally holds: the brand band and the mark, no more. An alt
+  // that repeats the page description would be the usual lie.
+  lines.push(`<meta property="og:image:alt" content="${attr(company.name)}" />`);
+  // The one reader that ignores og:image entirely is the one that asks for its
+  // own card tag instead (X/Twitter), and it wants it named `twitter:image`.
+  lines.push(`<meta name="twitter:card" content="summary_large_image" />`);
+  lines.push(`<meta name="twitter:image" content="${company.origin}/${SOCIAL_CARD.href}" />`);
   return lines.join("\n");
 }
 

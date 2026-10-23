@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="DataWeGo">
+  <defs>
+    <linearGradient id="dw" x1="14" y1="82" x2="86" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a5fd6"/>
+      <stop offset=".45" stop-color="#00b3c8"/>
+      <stop offset=".75" stop-color="#22c07a"/>
+      <stop offset="1" stop-color="#8fd94a"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="96" x2="96" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b1a3a"/>
+      <stop offset="1" stop-color="#0e2f4d"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="21" fill="url(#tile)"/>
+  <g fill="none" stroke="url(#dw)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 30v36"/>
+    <path d="M22 30h9a18 18 0 0 1 0 36h-9"/>
+    <path d="M56 30l6 36 8-22 8 22 6-36"/>
+  </g>
+  <g fill="url(#dw)">
+    <rect x="82" y="10" width="9" height="9" rx="2"/>
+    <rect x="69" y="12" width="7" height="7" rx="1.6" opacity=".82"/>
+    <rect x="84" y="23" width="6" height="6" rx="1.4" opacity=".6"/>
+  </g>
+</svg>

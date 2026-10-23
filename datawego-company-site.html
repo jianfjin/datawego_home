@@ -2,7 +2,7 @@
 <!--
   DataWeGo — company website prototype.
   Seed: web-prototype/assets/template.html  ·  Design system: Apple (tokens.css :root, pasted verbatim)
-  Imagery: project-local `resources/DataWeGo_banner3.png` (hero) and `resources/DataWeGo_Logo.png` (footer brand mark). No remote hotlinks.
+  Imagery: the hero ships as WebP in four widths (`resources/hero-*.webp`, derived by tools/derive-images.py from `resources/DataWeGo_banner3.png`) the footer brand mark is `resources/logo.svg` beside the same `<b>Data</b><i>WeGo</i>` wordmark the nav bar uses, and `resources/favicon.svg` is the icon. No remote hotlinks.
   Languages: English is the authored markup, and the NL dictionary in the closing script applies Dutch in the browser —
   which is what happens when this file is opened directly. What gets deployed is generated: build.mjs applies the same
   dictionary here and writes the static Dutch and English variants into dist/, and removes this file's language runtime
@@ -656,7 +656,13 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   <!-- ── 1 · HERO (full-bleed brand band on top, copy below) ────────────── -->
   <section class="hero" id="top" data-od-id="hero">
     <figure class="banner" data-od-id="hero-figure">
-      <img src="resources/DataWeGo_banner3.png" alt="DataWeGo brand banner" loading="eager" width="2056" height="491" />
+      <img
+        src="resources/hero-1028.webp"
+        srcset="resources/hero-640.webp 640w, resources/hero-1028.webp 1028w, resources/hero-1542.webp 1542w, resources/hero-2056.webp 2056w"
+        sizes="100vw"
+        alt="DataWeGo brand banner"
+        width="2056" height="491"
+        loading="eager" fetchpriority="high" decoding="async" />
       <figcaption><span>DataWeGo</span><span class="num">data infrastructure &amp; analytics</span></figcaption>
     </figure>
 
@@ -1166,14 +1172,18 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   <div class="container">
     <div class="foot-grid">
       <div class="stack" style="gap: var(--space-4);">
-        <img
-          src="resources/DataWeGo_Logo.png"
-          alt="DataWeGo"
-          data-od-id="footer-logo"
-          loading="lazy"
-          decoding="async"
-          style="width: auto; height: auto; max-width: 105px; max-height: 70px; align-self: flex-start; object-fit: contain;"
-        />
+        <span class="row" style="align-items: center; gap: var(--space-3);">
+          <img
+            src="resources/logo.svg"
+            alt=""
+            width="243" height="204"
+            data-od-id="footer-logo"
+            loading="lazy"
+            decoding="async"
+            style="height: 42px; width: auto; object-fit: contain;"
+          />
+          <span class="logo"><b>Data</b><i>WeGo</i></span>
+        </span>
         <p style="max-width: 34ch; margin: 0;">Building AI-powered data platforms for healthcare, life sciences and enterprise innovation.</p>
         <p class="meta" style="letter-spacing: 0.04em;">DEN HAAG · NETHERLANDS</p>
       </div>

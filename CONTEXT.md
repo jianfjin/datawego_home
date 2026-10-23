@@ -59,6 +59,23 @@ why it carries no canonical and no `hreflang` set.
 _Avoid_: 404 (the status it accompanies, not the page), soft 404 (a page that
 exists pretending to be this one, which is the failure it exists to prevent)
 
+**Artwork reference**:
+A path a page asks the host for, in an attribute — as opposed to a file the page
+merely mentions in a comment. The first is put on the network; the second stays
+in the source, where it can keep saying where an image came from. A reference the
+repository cannot satisfy is a failed build, not a broken image.
+_Avoid_: asset (here it would mean both the file and its shipped name, and U5
+separated the two), dependency
+
+**Derived file**:
+Shipped artwork that came from an authored file by a command a person runs —
+`tools/derive-images.py` cuts the hero widths, rasterises the PNG icons out of
+`favicon.svg`, and composes the social card. It is committed rather than built,
+so the build needs no image toolchain and `--check` can compare against the exact
+bytes a deploy uploads.
+_Avoid_: generated (the Pages are generated, every build, from a source that is
+not itself shipped; a derived file is made once and then reviewed)
+
 **Fetching and keeping**:
 The two separate questions a site answers a crawler: whether it may read a path
 (`robots.txt`), and whether what it read may be indexed (a `noindex` in the page).
