@@ -3,8 +3,11 @@
   DataWeGo — company website prototype.
   Seed: web-prototype/assets/template.html  ·  Design system: Apple (tokens.css :root, pasted verbatim)
   Imagery: project-local `resources/DataWeGo_banner3.png` (hero) and `resources/DataWeGo_Logo.png` (footer brand mark). No remote hotlinks.
-  Languages: English is the authored markup; Dutch is applied at runtime from the NL dictionary in the closing script
-  (EN/NL control in the nav bar, choice remembered in localStorage["datawego-lang"], browser language used as the default).
+  Languages: English is the authored markup, and the NL dictionary in the closing script applies Dutch in the browser —
+  which is what happens when this file is opened directly. What gets deployed is generated: build.mjs applies the same
+  dictionary here and writes the static Dutch and English variants into dist/, and removes this file's language runtime
+  from its own output (docs/adr/0003, docs/plans/2026-10-23-0601-feat-dutch-first-seo-plan.md). EN/NL in the nav bar are
+  links there, not a choice kept in localStorage.
 -->
 <html lang="en">
 <head>
@@ -363,17 +366,20 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
 }
 .lang-switch:hover { border-color: var(--meta); }
 .lang-btn {
+  /* a link as well as a button: this file swaps language in place, the
+     generated pages link to the other variant, so both shapes share the pill */
+  display: inline-flex; align-items: center; justify-content: center;
   min-width: 42px; height: 40px; padding: 0 var(--space-2);
   background: transparent; color: var(--fg-2);
   border: 0; border-radius: var(--radius-pill); cursor: pointer;
   font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.08em; text-decoration: none;
   transition: background var(--motion-fast) var(--ease-standard),
               color var(--motion-fast) var(--ease-standard);
 }
 .lang-btn:hover { color: var(--fg); }
-.lang-btn:hover:not([aria-pressed="true"]) { background: color-mix(in oklab, var(--fg), transparent 92%); }
-.lang-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.lang-btn:hover:not([aria-pressed="true"]):not([aria-current="true"]) { background: color-mix(in oklab, var(--fg), transparent 92%); }
+.lang-btn[aria-pressed="true"], .lang-btn[aria-current="true"] { background: var(--fg); color: var(--bg); }
 .lang-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 :root[data-theme="dark"] ::selection {
   background: color-mix(in oklab, var(--accent), transparent 58%);
