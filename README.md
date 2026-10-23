@@ -49,6 +49,7 @@ page opened straight from disk has no origin for that request to come from.
 │       ├── company.mjs          #   every company fact, declared once (ADR 0011)
 │       ├── page.mjs             #   one source in, one address out: retirement, translation, chrome
 │       ├── static.mjs           #   the four files that are not pages, derived from the two above
+│       ├── diagrams.mjs         #   the Diagram pages' titles and descriptions, which archify would overwrite
 │       ├── dictionary.mjs       #   the source's `var NL`, read as build input
 │       ├── markup.mjs           #   the tag-stack walker the translation splices into
 │       └── untranslated.mjs     #   the ledger: the English the Dutch page is allowed to show
@@ -66,7 +67,7 @@ page opened straight from disk has no origin for that request to come from.
 │   ├── sitemap.xml              #   every live indexable variant, read off the route table (R6)
 │   ├── 404.html                 #   so an unknown address is a 404 in Dutch, not the homepage (R7)
 │   ├── _headers                 #   HSTS, immutable chrome, and never an X-Robots-Tag (ADR 0006, R9)
-│   ├── docs/                    #   the four Diagram pages: served and linked, `noindex, follow` (ADR 0002)
+│   ├── docs/                    #   the four Diagram pages: their drawings, this repository's head (ADR 0002)
 │   ├── assets/                  #   chrome *and* artwork, every file named by its contents
 │   └── (no resources/)          #   what no page asks for is not uploaded
 ├── tools/
@@ -82,7 +83,14 @@ page opened straight from disk has no origin for that request to come from.
 │   ├── og-image.jpg             #   1200x630 social card: the brand band over the mark
 │   └── DataWeGo_banner{,1,2}.png, DataWeGo_Logo-1..5.png, datawego1.png,
 │       Developer_Desk_with_Erasmus_Bridge_View.png  # kept for reference; no page names them
-└── docs/                        # design-handoff material
+└── docs/                        # what the site is built from that is not code
+    ├── pharm-platform.html      #   the four Diagram pages, exactly as archify exported them;
+    │                            #   the build serves these bytes and writes their heads
+    ├── etl-dataflow-with-prepass.html
+    ├── marketing-research-swarm.html
+    ├── ehr-platform-architecture-with-prepass.html
+    ├── adr/                     #   the decisions, one file each (0001-0012)
+    ├── plans/                   #   the plans those decisions were taken in
     ├── DESIGN-HANDOFF.md        #   implementation contract (fidelity, responsive matrix)
     └── DESIGN-MANIFEST.json     #   machine-readable map of screens, tokens, interactions
 ```
@@ -161,6 +169,19 @@ year of cache to purge.
 Prose does not count as a request. The page's own comment says the hero WebP
 files were derived from `resources/DataWeGo_banner3.png`, and that sentence used
 to be a 1.4MB file on the strength of itself.
+
+**Who owns a Diagram page.** The four files under `docs/` are archify's export,
+and re-exporting a drawing rewrites the whole document. So the build hands the
+body over byte for byte and writes the head itself — the title, the description,
+`noindex, follow` and the icons come from `src/site/diagrams.mjs`, which is the
+only place in the repository allowed to say what a Diagram page is about. Typed
+into `docs/pharm-platform.html` instead, it would last until the next
+regeneration; two of the four titles that shipped today are the exporter's own
+guess, and one of those is still a Python module name. The head gains no
+`rel=canonical`, deliberately: a canonical says index this address and a noindex
+says index neither, and Google asks that the two not be combined. It costs about
+half a kilobyte per page on a document that is 0.8MB of inline drawing already
+(ADR 0002, R8).
 
 ## Repository housekeeping
 

@@ -43,7 +43,7 @@ const OG_LOCALE = Object.freeze({ nl: "nl_NL", en: "en_US" });
  * here would be a guess about a hash — and a guess that stays green when the
  * artwork is replaced under its own name.
  */
-const SITE_ICONS = Object.freeze([
+export const SITE_ICONS = Object.freeze([
   { rel: "icon", href: "resources/favicon.svg", type: "image/svg+xml", sizes: "any" },
   { rel: "icon", href: "resources/favicon-32.png", type: "image/png", sizes: "32x32" },
   { rel: "apple-touch-icon", href: "resources/apple-touch-icon.png", sizes: "180x180" },
@@ -407,7 +407,8 @@ export function headBlock({ route, lang, title, description }) {
   return lines.join("\n");
 }
 
-function attr(text) {
+/** Escape for the inside of an attribute value. */
+export function attr(text) {
   return encodeText(text).replace(/"/g, "&quot;");
 }
 

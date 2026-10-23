@@ -91,6 +91,12 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
 - **U4. Static SEO assets.** `dist/robots.txt` (R5), `dist/sitemap.xml` (R6, 2 rows), `dist/404.html` (R7), `dist/_headers` (R9 + HSTS; no `X-Robots-Tag`, ADR 0006).
 - **U5. Images and icons.** WebP srcset hero with dimensions and `fetchpriority`; logo → SVG; favicon set; `og:image` 1200×630 (R10).
 - **U6. Diagram pages.** `noindex, follow` + title/description, drawings untouched (R8).
+  **Made 2026-10-23:** the four heads are in `src/site/diagrams.mjs`, not in
+  `docs/*.html`, because archify rewrites the whole document on the next export
+  and two of the four shipped titles are its guesses (one is still a Python
+  module name). R8's "drawings untouched" is asserted as everything from
+  `</head>` onward being byte-identical to the committed file. English copy, one
+  entry per route, no canonical — see the amendment to ADR 0002.
 - **U7. Structured data.** `Organization` + `WebSite` + `WebPage` generated from `company.mjs` (R11).
 - **U8. Enquiry attribution.** Allowlisted field, body-only, guard test (R14).
 - **Ship:** deploy, then run every assertion under Verification Contract. Then dashboard items ①②③.

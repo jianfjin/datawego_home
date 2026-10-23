@@ -17,6 +17,12 @@
  * half English, or a page whose script was written over at the wrong offset.
  * Both parse as HTML either way.
  *
+ * U6 adds the four Diagram pages, which are the only documents in the build
+ * whose body the repository does not author. Two assertions hold that
+ * separation open: everything after `</head>` is byte-for-byte the committed
+ * archify file, and everything the page needs in order to stay out of the index
+ * is in front of it (R8).
+ *
  * Nothing here reads `dist/` — `generate()` works in memory, so a stale build
  * directory can never make this suite pass, and the suite never writes one.
  */
@@ -52,6 +58,7 @@ import {
   visibleStrings,
 } from "../src/site/page.mjs";
 import { headersFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
+import { DIAGRAM_HEAD, applyDiagramHead } from "../src/site/diagrams.mjs";
 
 const ROOT = new URL("..", import.meta.url);
 const read = (relative) => fs.readFileSync(new URL(relative, ROOT), "utf8");
@@ -700,8 +707,23 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, th
   for (const route of diagrams) {
     const name = distPath(route, "nl");
     assert.ok(files.has(name), `${name} was not copied`);
-    const original = fs.readFileSync(new URL(`../docs/${path.basename(route.path.nl)}`, import.meta.url));
-    assert.ok(Buffer.from(files.get(name)).equals(original), `${name} was rewritten; the diagrams' drawings are out of scope (R8)`);
+    const served = String(files.get(name));
+    const original = read(`docs/${path.basename(route.path.nl)}`);
+
+    // This is where R8 is kept: the two documents diverge inside <head> and
+    // meet again for the rest of the file. A drawing that came back edited is
+    // the build having opinions about someone else's output.
+    assert.equal(
+      served.slice(served.indexOf("</head>")),
+      original.slice(original.indexOf("</head>")),
+      `${name}: the body changed; the diagrams' drawings are out of scope (R8)`,
+    );
+    assert.equal(
+      served.slice(0, served.indexOf("<head>")),
+      original.slice(0, original.indexOf("<head>")),
+      `${name}: even the tag before the head changed, which nothing here writes`,
+    );
+    assert.ok(served.length > original.length, `${name}: the head was replaced rather than added to`);
   }
 
   const chrome = [...files.keys()].filter((name) => /^assets\/site\./.test(name));
@@ -871,4 +893,108 @@ test("artwork a page asks for that is not in the repository stops the build", ()
     "a request for artwork that does not exist has to be a failed build, not a broken image",
   );
   assert.match(problems.join("\n"), /derive-images\.py/, "and it has to say where the artwork comes from");
+});
+
+/* ------------------------------------------------------------- U6 — the four
+ * Diagram pages: the only documents in this build whose body the repository
+ * does not own. They are served, they are linked, and they ask not to be
+ * indexed (ADR 0002, R8).
+ */
+
+test("a Diagram page says it is not for the index, and says what it shows (R8)", () => {
+  const { files } = generate();
+  const live = ROUTES.filter((route) => route.kind === "diagram" && route.status === "live");
+  assert.equal(live.length, 4, "ADR 0002 counts four pieces of evidence");
+
+  const sitemap = sitemapXml().contents;
+  for (const route of live) {
+    const name = distPath(route, "nl");
+    const html = String(files.get(name));
+    const head = html.slice(html.indexOf("<head>"), html.indexOf("</head>"));
+    const copy = DIAGRAM_HEAD[route.key];
+
+    assert.ok(head.includes(`<title>${copy.title}</title>`), `${name} is not titled by this repository (R8)`);
+    assert.ok(
+      head.includes(`<meta name="description" content="${copy.description}" />`),
+      `${name} has no description, so whatever quotes it chooses its own sentence`,
+    );
+    assert.equal(
+      (head.match(/name="robots"/g) || []).length,
+      1,
+      `${name} answers the robots question twice and leaves the crawler to pick`,
+    );
+    assert.ok(
+      head.includes('<meta name="robots" content="noindex, follow" />'),
+      `${name} is not asked out of the index, or is asked out and not followed (ADR 0002)`,
+    );
+    assert.match(
+      head,
+      /rel="icon"[^>]*href="assets\/favicon\.[0-9a-f]{12}\.svg"/,
+      `${name} is an evidence page that opens in a tab with nothing in it`,
+    );
+
+    // The three tags whose whole job is to tell a ranker about an address. This
+    // page has one address, no second language, and is asked not to be ranked:
+    // Google's own guidance is that a canonical and a noindex never go together,
+    // because they are two answers to the same question.
+    assert.ok(!head.includes('rel="canonical"'), `${name} pairs a canonical with a noindex`);
+    assert.ok(!head.includes("hreflang"), `${name} claims a second language a Diagram page does not have (ADR 0002)`);
+    assert.ok(!sitemap.includes("docs/"), `${name} is announced in the sitemap, which un-hides what ADR 0002 hid`);
+  }
+});
+
+test("the Diagram copy is one table, and it starts from the names the route table already gives", () => {
+  const live = ROUTES.filter((route) => route.kind === "diagram" && route.status === "live").map((route) => route.key);
+  assert.deepEqual(
+    Object.keys(DIAGRAM_HEAD).sort(),
+    live.slice().sort(),
+    "diagrams.mjs and the route table disagree about which pages are evidence, and one of them is lying",
+  );
+
+  for (const [key, copy] of Object.entries(DIAGRAM_HEAD)) {
+    const name = routeByKey.get(key).name.nl;
+    assert.ok(
+      copy.title.startsWith(`${name} — `),
+      `${key}: its title does not open with the name the route table gives it, so the two will drift apart`,
+    );
+    assert.ok(copy.title.length <= 60, `${key}: ${copy.title.length} characters of title, and a result shows around 60`);
+    assert.ok(
+      copy.description.length >= 70 && copy.description.length <= 160,
+      `${key}: ${copy.description.length} characters of description — long enough to say something, short enough not to be cut mid-word`,
+    );
+    assert.ok(!/u\b|\bu\./.test(copy.description), `${key}: the site says "je" (ADR 0012)`);
+  }
+});
+
+test("a drawing whose head disagrees with the generator stops the build", () => {
+  const route = routeByKey.get("diagram-pharm-platform");
+  const source = read("docs/pharm-platform.html");
+
+  const once = applyDiagramHead(source, route);
+  assert.deepEqual(once.problems, [], "the committed diagram page is not the head this function reads");
+  assert.notEqual(once.html, source, "nothing was written");
+
+  // Applying it twice is what a re-exported file with a head already in it looks
+  // like, and it is the cheapest way to prove the double-answer guard bites.
+  const twice = applyDiagramHead(once.html, route);
+  assert.equal(twice.problems.length, 2, "the same head written over itself is a page that answers robots and description twice");
+  assert.match(twice.problems.join("\n"), /robots/);
+  assert.match(twice.problems.join("\n"), /description/);
+  assert.equal(twice.html, once.html, "a page the build refused was rewritten anyway");
+
+  const stripped = source.replace(/<title>[\s\S]*?<\/title>/, "");
+  const noTitle = applyDiagramHead(stripped, route);
+  assert.equal(noTitle.problems.length, 1, "an exporter that stopped writing titles would ship a page with none");
+  assert.equal(noTitle.html, stripped, "a page the build refused got a head anyway");
+
+  const canonical = source.replace(/<\/title>/, `</title>\n  <link rel="canonical" href="https://www.datawego.nl/docs/pharm-platform.html" />`);
+  assert.match(
+    applyDiagramHead(canonical, route).problems.join("\n"),
+    /canonical/,
+    "a canonical smuggled into the drawing is the contradiction the test above checks every page for",
+  );
+
+  const unlisted = applyDiagramHead(source, { key: "diagram-someone-forgot", indexable: false });
+  assert.equal(unlisted.problems.length, 1, "a Diagram route with no entry ships the exporter's title, quietly");
+  assert.match(unlisted.problems.join("\n"), /declares no head/);
 });

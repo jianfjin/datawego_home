@@ -13,7 +13,6 @@
  * apart, and the reason `--check` can exist at all.
  */
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +21,7 @@ import { company } from "./src/site/company.mjs";
 import { LANGS, ROUTES, ROOT_LANG, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
 import { CHROME_TOKENS, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
 import { staticAssets } from "./src/site/static.mjs";
+import { applyDiagramHead } from "./src/site/diagrams.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
@@ -95,14 +95,18 @@ function generate() {
       continue;
     }
 
-    // Diagram pages: served and linked, `noindex, follow` (ADR 0002). Their
-    // head is still their own to write; U6 moves it here.
+    // Diagram pages: served and linked, never indexed (ADR 0002). The drawing
+    // is archify's and is handed on byte for byte; the head that says so is
+    // this repository's, and it is written here rather than in docs/*.html so
+    // that regenerating a diagram cannot undocument the site (R8).
     const from = path.join("docs", path.basename(route.path.nl));
     if (!fs.existsSync(path.join(ROOT, from))) {
       problems.push(`${route.key}: ${from} is missing — a committed diagram page has to exist to be served`);
       continue;
     }
-    files.set(distPath(route, "nl"), read(from));
+    const drawn = applyDiagramHead(read(from), route);
+    problems.push(...drawn.problems);
+    if (!drawn.problems.length) files.set(distPath(route, "nl"), drawn.html);
   }
 
   if (!ONLY) {

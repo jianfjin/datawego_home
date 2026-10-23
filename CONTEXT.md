@@ -29,8 +29,13 @@ One of four named pieces of shipped work that evidence a Practice area: Pharm Pl
 _Avoid_: reference, project
 
 **Diagram page**:
-The self-contained architecture drawing a Case study opens, under `docs/`. It is evidence about a piece of work, not a claim about the company.
-_Avoid_: doc (the folder also holds plans and design notes that are not Diagram pages)
+The self-contained architecture drawing a Case study opens, under `docs/`. It is
+evidence about a piece of work, not a claim about the company, so it is served
+and linked and asked out of the index. The drawing belongs to whoever exported
+it; the `<head>` belongs to this repository, which is why its title and its
+description are in `src/site/diagrams.mjs` and not in the file a re-export
+overwrites.
+_Avoid_: doc (the folder also holds plans and design notes that are not Diagram pages), evidence page (the evidence is the drawing; the page carries it)
 
 **Page**:
 A surface with an address of its own, so search can be pointed at it separately from anything else on the site.
