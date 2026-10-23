@@ -98,6 +98,14 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
   `</head>` onward being byte-identical to the committed file. English copy, one
   entry per route, no canonical — see the amendment to ADR 0002.
 - **U7. Structured data.** `Organization` + `WebSite` + `WebPage` generated from `company.mjs` (R11).
+  **Made 2026-10-23:** one `<script type="application/ld+json">` per Page variant,
+  last in the head, about 1.6KB. `WebSite` on the home Pages only, per ADR 0011's
+  per-page list; `Service` and `BreadcrumbList` arrive with U9 and point at the same
+  `@id`s rather than describing the firm twice. The Diagram pages carry no graph —
+  ADR 0011's U7 amendment says why. One prose/graph pair was closed on the way: the
+  footer's registry line spelled `KVK-nummer` while the graph's `propertyID` says
+  `KvK-nummer`, and two spellings of one registry is how a pair stops being
+  checkable, so `tests/seo-graph.test.mjs` now compares the number in both.
 - **U8. Enquiry attribution.** Allowlisted field, body-only, guard test (R14).
 - **Ship:** deploy, then run every assertion under Verification Contract. Then dashboard items ①②③.
 
@@ -112,23 +120,71 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
 ## Verification Contract
 
 ```sh
+W=https://www.datawego.nl
+
 # R1/R2  one host, two languages, no JavaScript in the evidence
-curl -sI https://datawego.nl/            | grep -qi '^HTTP/2 301'
-curl -s  https://www.datawego.nl/en/     | grep -o '<html lang="[a-z]*"'   # en
-curl -s  https://www.datawego.nl/        | grep -c 'dataplatform'          # >0, Dutch in served HTML
-curl -sI https://datawego.pages.dev/     | grep -vi 'x-robots'            # no header; canonical does the work
-# R7  the defect, gone
-curl -s  -o /dev/null -w '%{http_code} %{content_type}\n' https://www.datawego.nl/nope-xyz   # 404 text/html
-curl -s  https://www.datawego.nl/robots.txt | wc -c                                          # 611 B (565 authored + the build's Sitemap: line), not 119039
-curl -sS https://www.datawego.nl/robots.txt | grep -i sitemap
-curl -s  https://www.datawego.nl/sitemap.xml | head -1                                      # <?xml …
-# R3/R4  agreement between the three places that name an address
-comm -3 <(curl -s …/sitemap.xml | grep -o '<loc>[^<]*' | cut -c6- | sort) \
-        <(curl -s …/ | grep -o 'rel="canonical" href="[^"]*' | cut -d'"' -f3 | sort)        # empty
-# R15  the build refuses a half-translated page
+curl -sI https://datawego.nl/        | grep -qi '^HTTP/2 301'                 # apex redirects
+curl -s  $W/en/                      | grep -o '<html lang="[a-z]*"'          # en
+curl -s  $W/                         | grep -c 'dataplatform'                 # >0: Dutch in the served HTML
+curl -sI https://datawego.pages.dev/ | grep -vi 'x-robots'                    # no header; canonical does the work
+
+# R3/R4  the three places that name an address agree — walked from the sitemap, not compared to one page
+for u in $(curl -s $W/sitemap.xml | grep -o '<loc>[^<]*' | cut -c6-); do
+  page=$(curl -s "$u")
+  printf '%s\ncanonical %s\nhreflang  %s\n' "$u" \
+    "$(echo "$page" | grep -o 'rel="canonical" href="[^"]*' | sed 's/.*href="//')" \
+    "$(echo "$page" | grep -o 'hreflang="[^"]*" href="[^"]*' | sed 's/.*href="//' | paste -sd' ')"
+done   # each address canonicals to itself; both variants list the same pair, x-default last
+
+# R7  the defect, gone. The two content-type lines say "not text/html" rather than naming a
+#     type: the answer that matters is that the request stopped reaching the homepage.
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' $W/nope-xyz   # 404, with the Dutch 404 page in the body
+curl -s -o /dev/null -w '%{content_type}\n' $W/robots.txt              # not text/html
+curl -s -o /dev/null -w '%{content_type}\n' $W/sitemap.xml             # not text/html
+curl -s  $W/robots.txt | wc -c                     # 611 B (565 authored + the build's Sitemap: line), not 119039
+curl -s  $W/robots.txt | grep -i sitemap           # the absence of this line is what made it a homepage
+curl -s  $W/sitemap.xml | head -1                  # <?xml …
+
+# R8  a Diagram page is reachable, noindexed, and says nothing about the firm
+curl -s -o /dev/null -w '%{http_code}\n' $W/docs/pharm-platform.html   # 200 — it stays linked
+curl -s  $W/docs/pharm-platform.html | grep -c 'noindex, follow'       # 1
+curl -s  $W/docs/pharm-platform.html | grep -c 'application/ld+json'  # 0 — ADR 0011's U7 amendment
+
+# R9/R10  these are the deployment's own words. A file server run over dist/ sends no Cache-Control
+#         at all, so nothing here is verifiable before ship; the hashes come from the page, never a
+#         copy of them.
+curl -sI $W/ | grep -i '^cache-control'                               # public, max-age=0, must-revalidate
+for a in $(curl -s $W/ | grep -o 'assets/[a-z0-9._-]*\.\(css\|js\|svg\|png\|jpg\|webp\)' | sort -u); do
+  printf '%s ' "$a"; curl -sI $W/$a | grep -i '^cache-control'
+done                                                                  # every line ends ", immutable"; not one 404s
+curl -s -o /dev/null -w '%{http_code}\n' \
+  "$(curl -s $W/ | grep -o 'og:image" content="[^"]*' | sed 's/.*content="//')"   # 200 at the name the page uses
+curl -s  $W/    | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="//'  # nl_NL
+curl -s  $W/en/ | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="//'  # en_US
+
+# R11  the graph, in the bytes a crawler that runs no JavaScript receives. -A8 because the block
+#      opens with @context and @graph; the Organization node is six lines in, and -A3 ends inside it.
+curl -s $W/ | grep -A8 'application/ld+json' | grep -q '"@type": "Organization"' && echo PASS
+curl -s $W/ | grep -c '"legalName"\|"dateModified"\|LocalBusiness'   # 0 — the refusals in ADR 0011
+curl -s $W/ | grep -c '"@type": "WebSite"'                           # 1 — home Pages only
+curl -s $W/en/ | grep -c '"@type": "WebSite"'                       # 1
+
+# R15  the build refuses a half-translated page and a dist/ that has fallen behind
 node build.mjs --check && echo "dist current"
-printf 'x' | node --test tests/contact.test.mjs   # plus the new injection guard
+node --test
+printf 'x' | node --test tests/contact.test.mjs   # plus the new injection guard (U8)
 ```
+
+**Made 2026-10-23, at U7:** every line here was run against a file server over `dist/` before it
+was trusted, which corrected four things. The sitemap walk replaces a `comm` of `loc`s against one
+page's canonical: at two addresses that comparison is unequal by construction, and its
+`cut -d'"' -f3` selected the literal string ` href=` rather than a URL, so it had never asserted
+anything at all. The graph grep is `-A8` because the block opens with `@context` and `@graph` and
+the `Organization` node's `@type` is six lines in — `-A3`, the window it replaces, matches nothing.
+The two content-type lines decline to name a type, because the claim worth making is "this stopped
+being the homepage", not "text/plain". And the R9/R10 header block is deploy-only: a static server
+over `dist/` sends no `Cache-Control` whatsoever, so those lines are the deployment's words, not
+the build's.
 
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 

@@ -61,3 +61,14 @@ stay `null`, and the footer's three address lines go with them (U3), together wi
 the two `not copy` entries in `src/site/untranslated.mjs` and the dictionary key
 that translates the third of them. The KvK number, the email and Den Haag remain,
 and are what Google has to check the site against.
+
+## Amendment at U7: which pages carry the graph
+
+The per-page list above says `Organization` everywhere, and U6 had by then decided
+what a Diagram page is for. A drawing is evidence about a piece of work and not a
+claim about the company — that is CONTEXT.md's sentence, and an `Organization` node
+is the same sentence written for a machine to believe. So "everywhere" is the Pages,
+in both variants, and the four `/docs/` addresses carry a title, a description and a
+`noindex` and nothing else. The facts still live in one module; what changed is the
+recognition that a page asked not to be indexed has no business introducing the firm
+to whoever fetched it.

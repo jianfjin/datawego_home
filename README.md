@@ -50,6 +50,7 @@ page opened straight from disk has no origin for that request to come from.
 │       ├── page.mjs             #   one source in, one address out: retirement, translation, chrome
 │       ├── static.mjs           #   the four files that are not pages, derived from the two above
 │       ├── diagrams.mjs         #   the Diagram pages' titles and descriptions, which archify would overwrite
+│       ├── graph.mjs            #   the structured data, every value read out of the modules above
 │       ├── dictionary.mjs       #   the source's `var NL`, read as build input
 │       ├── markup.mjs           #   the tag-stack walker the translation splices into
 │       └── untranslated.mjs     #   the ledger: the English the Dutch page is allowed to show
@@ -169,6 +170,21 @@ year of cache to purge.
 Prose does not count as a request. The page's own comment says the hero WebP
 files were derived from `resources/DataWeGo_banner3.png`, and that sentence used
 to be a 1.4MB file on the strength of itself.
+
+**What the machine-readable version says.** One
+`<script type="application/ld+json">` per Page variant, built from `company.mjs`
+and the route table and never typed into a page (ADR 0011): an `Organization`
+carrying the KvK number, the email, Den Haag at city level and the LinkedIn; a
+`WebSite` that describes the site once, for both languages; and a `WebPage` whose
+`@id` *is* the canonical beside it, so the two cannot name different addresses.
+What is not in it was decided as carefully as what is: no `legalName`, because an
+eenmanszaak's statutory name is a person and the site names nobody; no `Person`; no
+`LocalBusiness` or `ProfessionalService`, which are the map pack's instrument and
+the firm declined the map pack; no `dateModified`, not even a build timestamp,
+because that is a page claiming it was edited today; and no street, so the graph
+cannot disagree with the page or with a Profile that does not exist.
+`tests/seo-graph.test.mjs` walks the emitted JSON and refuses any of those keys for
+appearing at all rather than for being empty — `"telephone": null` is a sentence.
 
 **Who owns a Diagram page.** The four files under `docs/` are archify's export,
 and re-exporting a drawing rewrites the whole document. So the build hands the

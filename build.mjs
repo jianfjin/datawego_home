@@ -303,10 +303,25 @@ function main() {
   process.stdout.write(
     `✓ dist/ assembled — ${files.size} file(s), ${fmt(sizeOf(files))}\n` +
       pages.map((n) => `    ${n.padEnd(22)} ${fmt(bytesOf(files.get(n)))}`).join("\n") +
-      `\n\n  addresses now:\n${ROUTES.filter((r) => r.status === "live" && isVariantBearing(r))
-        .flatMap((r) => ["nl", "en"].map((lang) => `    ${urlOf(r.key, lang)}`))
-        .join("\n")}\n`,
+      `\n\n  addresses now:\n${addressesWritten(files).map((url) => `    ${url}`).join("\n")}\n`,
   );
+}
+
+/**
+ * The addresses this run actually put on disk, in route-table order.
+ *
+ * Derived from the written file names rather than from the table alone, because
+ * `--only` is a real mode: a summary that names ten addresses after writing one
+ * page is the build describing a deployment it did not make.
+ */
+function addressesWritten(files) {
+  return ROUTES.filter((route) => route.status === "live")
+    .flatMap((route) => (isVariantBearing(route) ? LANGS : [ROOT_LANG]).map((lang) => ({
+      name: distPath(route, lang),
+      url: urlOf(route.key, lang),
+    })))
+    .filter(({ name }) => files.has(name))
+    .map(({ url }) => url);
 }
 
 function* listFiles(dir) {

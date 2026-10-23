@@ -24,6 +24,7 @@ import { company } from "./company.mjs";
 import { LANGS, ROOT_LANG, alternateLinks, urlOf } from "./routes.mjs";
 import { makeLookup, readDictionary, readPageMeta } from "./dictionary.mjs";
 import { applyDictionary, decodeEntities, encodeText, norm } from "./markup.mjs";
+import { graphScript, pageGraph } from "./graph.mjs";
 import { LEDGER, isLedgered } from "./untranslated.mjs";
 
 /** The authored Page source for the home address, relative to the repo root. */
@@ -404,6 +405,10 @@ export function headBlock({ route, lang, title, description }) {
   // own card tag instead (X/Twitter), and it wants it named `twitter:image`.
   lines.push(`<meta name="twitter:card" content="summary_large_image" />`);
   lines.push(`<meta name="twitter:image" content="${company.origin}/${SOCIAL_CARD.href}" />`);
+  // Last, because it is the only part of the head a machine reads twice: the
+  // metas above describe this address, and this describes the company behind
+  // every address (ADR 0011).
+  lines.push(graphScript(pageGraph({ route, lang, title, description })));
   return lines.join("\n");
 }
 

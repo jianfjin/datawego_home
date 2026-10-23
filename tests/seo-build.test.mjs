@@ -90,8 +90,16 @@ function renderWith(lang, edit) {
   return renderVariant({ route: home, lang, source: mutated });
 }
 
+/** The script regions a browser actually executes, in document order. */
+const EXECUTABLE = /^(?:|(?:text|application)\/(?:x-)?javascript|module)$/;
+
 function inlineScripts(html) {
-  return [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+  // `executes` is the whole filter. U7's JSON-LD is a `<script>` the browser
+  // never runs, and counting it as a script would mean either a second theme
+  // boot or a data island that fails to parse as JavaScript.
+  return [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter(([, attrs]) => !/\bsrc=/.test(attrs) && EXECUTABLE.test((/\btype="([^"]*)"/.exec(attrs) || ["", ""])[1]))
+    .map(([, , code]) => code);
 }
 
 /** Everything one variant sends: the document, plus the files beside it. */
