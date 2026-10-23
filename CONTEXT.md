@@ -28,13 +28,26 @@ _Avoid_: capability (the bullets inside an area), service line
 One of four named pieces of shipped work that evidence a Practice area: Pharm Platform, the EHR ETL pipeline, the Marketing Research Swarm, and the EHR Transform Platform.
 _Avoid_: reference, project
 
+**Address**:
+What a Page or a Diagram page is asked for by, and the only thing the route table
+states. An Address is not a file: a Page's address is served from `index.html`
+inside a directory, and a Diagram page's from `<name>.html`, and in both cases the
+extension and the `index` belong to the disk rather than to the URL. Two things
+count as an address: one a page names in a `canonical`, a sitemap row or an
+`hreflang`, and one a page names in an `href` or a `src` — the second is easy to
+write as a path next to the file it was authored in, which is right at the root and
+wrong in a directory, including `/en/`.
+_Avoid_: URL (an address plus a host plus, sometimes, a query — an Address here is the path a Page is known at), link (the markup that carries an address), path (what a filesystem has)
+
 **Diagram page**:
 The self-contained architecture drawing a Case study opens, under `docs/`. It is
 evidence about a piece of work, not a claim about the company, so it is served
 and linked and asked out of the index. The drawing belongs to whoever exported
 it; the `<head>` belongs to this repository, which is why its title and its
 description are in `src/site/diagrams.mjs` and not in the file a re-export
-overwrites.
+overwrites. Its address is `/docs/<name>` and its file is `docs/<name>.html`; the
+difference is the platform's to know, and a link that says the file instead of the
+address buys a redirect on the way to the drawing.
 _Avoid_: doc (the folder also holds plans and design notes that are not Diagram pages), evidence page (the evidence is the drawing; the page carries it)
 
 **Page**:

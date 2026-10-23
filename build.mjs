@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import { company } from "./src/site/company.mjs";
 import { LANGS, ROUTES, ROOT_LANG, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
-import { CHROME_TOKENS, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
+import { CHROME_TOKENS, leakedRouteLinks, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
 import { staticAssets } from "./src/site/static.mjs";
 import { applyDiagramHead } from "./src/site/diagrams.mjs";
 
@@ -53,11 +53,23 @@ function flagValue(name) {
   return inline.length > 1 ? inline[1] : process.argv[i + 1] ?? null;
 }
 
+/**
+ * The file an asset address is served from. The address says `/docs/<name>`,
+ * the drawing on disk is `<name>.html`, and Pages answers the bare address from
+ * that file — so the extension belongs here and nowhere a link can carry it
+ * (ADR 0005). Naming it once is also what lets the source read below and the
+ * dist write agree without either one saying the other's name.
+ */
+function assetFile(route) {
+  const pathname = new URL(urlOf(route.key, ROOT_LANG)).pathname;
+  return path.join(...pathname.split("/").filter(Boolean)) + ".html";
+}
+
 /** Where an address lives on disk. `dist/` mirrors the URL tree, directory form. */
 function distPath(route, lang) {
   const address = urlOf(route.key, lang);
   const pathname = new URL(address).pathname;
-  if (route.form === "asset") return path.join(...pathname.split("/").filter(Boolean));
+  if (route.form === "asset") return assetFile(route);
   if (pathname === "/") return "index.html";
   return path.join(...pathname.split("/").filter(Boolean), "index.html");
 }
@@ -99,7 +111,7 @@ function generate() {
     // is archify's and is handed on byte for byte; the head that says so is
     // this repository's, and it is written here rather than in docs/*.html so
     // that regenerating a diagram cannot undocument the site (R8).
-    const from = path.join("docs", path.basename(route.path.nl));
+    const from = assetFile(route);
     if (!fs.existsSync(path.join(ROOT, from))) {
       problems.push(`${route.key}: ${from} is missing — a committed diagram page has to exist to be served`);
       continue;
@@ -124,10 +136,15 @@ function generate() {
   files.set("_routes.json", ROUTES_JSON);
 
   // Last, so a step added after it cannot leave a token in what this build
-  // claims to have written. A browser asks for `{{CHROME_CSS}}` as a path.
+  // claims to have written. A browser asks for `{{CHROME_CSS}}` as a path, and
+  // for `{{LINK:<key>}}` as a page that does not exist.
   for (const [name, bytes] of files) {
-    const leaked = Object.values(CHROME_TOKENS).find((token) => String(bytes).includes(token));
+    const text = String(bytes);
+    const leaked = Object.values(CHROME_TOKENS).find((token) => text.includes(token));
     if (leaked) problems.push(`${name} still holds ${leaked} — the chrome was rendered but never linked`);
+    for (const key of leakedRouteLinks(text)) {
+      problems.push(`${name} still holds a link to ${key} — the route was named but never answered`);
+    }
   }
 
   return { files, problems };
@@ -228,7 +245,22 @@ function shipAssets(files, problems) {
     // The callback's offsets are into the string it was handed, so the comment
     // ranges and the match ranges are measured on one ruler. Prose keeps naming
     // the file it came from; only the requests move.
-    files.set(name, text.replace(ASSET_REF, (logical, offset) => (requests.has(`${logical}@${offset}`) ? renamed.get(logical) : logical)));
+    files.set(
+      name,
+      text.replace(ASSET_REF, (logical, offset, document) => {
+        if (!requests.has(`${logical}@${offset}`)) return logical;
+        const shipped = renamed.get(logical);
+        /*
+         * Rooted, not relative. `assets/<name>` resolves against the directory of
+         * the page carrying it, which is the root for the Dutch homepage and `/en/`
+         * for its English variant — so one file became two addresses, and the page
+         * the site offers as `x-default` asked for `/en/assets/logo…` and was
+         * answered with 404. A reference that is already an absolute URL keeps its
+         * length, because there the origin has done the rooting (`og:image`).
+         */
+        return document.slice(0, offset).endsWith("/") ? shipped : `/${shipped}`;
+      }),
+    );
   }
 }
 

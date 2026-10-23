@@ -100,15 +100,17 @@ test("every address is absolute and on the one host that answers (ADR 0006)", ()
   }
 });
 
-test("directory addresses end in a trailing slash, and .html is only the Diagram exception (ADR 0005)", () => {
+test("no address carries a file extension, and only a Page address carries a slash (ADR 0005)", () => {
   for (const route of ROUTES) {
+    for (const lang of LANGS) {
+      assert.ok(!route.path[lang].endsWith(".html"), `${route.key}.${lang}: an extension is a file, not an address`);
+    }
     if (route.form === "directory") {
       assert.ok(route.path.nl.endsWith("/"), `${route.key}.nl needs a trailing slash`);
       assert.ok(route.path.en.endsWith("/"), `${route.key}.en needs a trailing slash`);
-      assert.ok(!route.path.nl.endsWith(".html/"), `${route.key}: a Page address carries no extension`);
     } else {
       assert.equal(route.form, "asset", `${route.key}: an undeclared third form`);
-      assert.ok(route.path.nl.endsWith(".html"), `${route.key}: .html is reserved for Diagram pages`);
+      assert.ok(!route.path.nl.endsWith("/"), `${route.key}: an asset address has no trailing slash`);
     }
   }
 });
@@ -200,7 +202,8 @@ test("refuses a Diagram page marked indexable, and a Page shipped but not indexa
 });
 
 test("refuses a single-address route that declares two addresses", () => {
-  problemFor("diagram-marketing-research-swarm", { path: { en: "/docs/swarm.html" } }, "declares two paths");
+  problemFor("diagram-marketing-research-swarm", { path: { en: "/docs/swarm" } }, "declares two paths");
+  problemFor("diagram-pharm-platform", { path: { nl: "/docs/pharm-platform.html", en: "/docs/pharm-platform.html" } }, "names a file rather than the address");
 });
 
 test("refuses an address carrying a query or a fragment", () => {

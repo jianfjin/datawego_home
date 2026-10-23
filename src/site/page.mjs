@@ -30,6 +30,49 @@ import { LEDGER, isLedgered } from "./untranslated.mjs";
 /** The authored Page source for the home address, relative to the repo root. */
 export const PAGE_SOURCES = Object.freeze({ home: "datawego-company-site.html" });
 
+/**
+ * A link to another address of this site, authored as a token and filled here.
+ *
+ * The four Diagram links were authored as `href="docs/<name>.html"`, which is a
+ * path relative to the directory of the page carrying it: right under the Dutch
+ * root, and `/en/docs/<name>.html` under the English one, where nothing answers.
+ * So the English homepage — the address the site hands Google as `x-default` —
+ * linked its own evidence to 404s, in the one form no assertion about the route
+ * table could see, because the addresses it named were never in that table.
+ *
+ * A token is what keeps this from becoming a second list of addresses: every one
+ * comes from `urlOf`, in the language of the page being written, and a key that
+ * names no route is a failed build rather than a link to nowhere. The cost is
+ * the one `{{CHROME_CSS}}` already pays: the authored file, opened from disk,
+ * has links that go nowhere until the build has run.
+ */
+const ROUTE_LINK = /\{\{LINK:([a-z0-9-]+)\}\}/g;
+
+export function routeLinkToken(key) {
+  return `{{LINK:${key}}}`;
+}
+
+/** The link tokens still sitting in a document, which is a build that stopped early. */
+export function leakedRouteLinks(document) {
+  return [...String(document).matchAll(ROUTE_LINK)].map((match) => match[1]);
+}
+
+function fillRouteLinks(html, lang, problems) {
+  const claims = new Set();
+  const out = html.replace(ROUTE_LINK, (whole, key) => {
+    try {
+      return urlOf(key, lang);
+    } catch {
+      claims.add(key);
+      return whole;
+    }
+  });
+  for (const key of claims) {
+    problems.push(`a link names ${key}, which is no route in the table that owns addresses (ADR 0005)`);
+  }
+  return out;
+}
+
 /** What a `<html lang>` attribute, an `hreflang` value and a `lang` attribute all want. */
 const HTML_LANG = Object.freeze({ nl: "nl", en: "en" });
 
@@ -451,6 +494,8 @@ export function renderVariant({ route, lang, source }) {
 
   let html = source;
   for (const edit of retirements(lang)) html = applyEdit(html, edit, problems);
+
+  html = fillRouteLinks(html, lang, problems);
 
   const title = lang === ROOT_LANG ? pageMeta.titleNl : authored.title;
   const description = lang === ROOT_LANG ? pageMeta.descNl : authored.description;

@@ -48,6 +48,7 @@ The mechanism that makes this survivable is generation: a route table is the onl
 - **R16:** The four new Pages carry 400–700 words of prose each, drafted by the agent from existing site copy + the NL dictionary's settled terminology + the four diagrams' facts, then native-reviewed by the owner before it ships (Q10).
 - **R17:** Third-party analytics stays at zero scripts (ADR 0010).
 - **R18:** Google Search Console and Bing Webmaster both receive the sitemap, and the ten addresses get an indexing request (Q14).
+- **R19:** Nothing a page asks for resolves outside what this build wrote. Every `src`, `srcset` entry, `poster` and internal `href` is rooted or absolute, so one request means one file from `/` and from `/en/` alike, and a Diagram link names the address Pages answers rather than the file holding the drawing (ADR 0005's second amendment).
 
 ### Key Decisions
 
@@ -90,6 +91,14 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
   **Made 2026-10-23, owner's reading of "strip":** R13 is measured on shipped bytes. The authored file keeps `renderLang`, the language boot and `localStorage["datawego-lang"]`, because it is the one artifact that opens from disk as a bilingual preview; the generator removes that span while emitting each variant. What makes this safe rather than a lie is that the guard reads the emitted page *and* its chrome together — a runtime that moved into `site.js` instead of being deleted fails the build (ADR 0003 keeps the dictionary as build input either way, so nothing is served that is not also authored).
 - **U4. Static SEO assets.** `dist/robots.txt` (R5), `dist/sitemap.xml` (R6, 2 rows), `dist/404.html` (R7), `dist/_headers` (R9 + HSTS; no `X-Robots-Tag`, ADR 0006).
 - **U5. Images and icons.** WebP srcset hero with dimensions and `fetchpriority`; logo → SVG; favicon set; `og:image` 1200×630 (R10).
+  **Made 2026-10-23, at the stage-1 deploy:** every reference this step names is emitted
+  rooted (`/assets/<name>`), not relative. The nine artwork files and the two chrome files
+  were given as bare paths, which resolve against the *directory of the page*, so the whole
+  set was correct at `/` and 404 at `/en/` — the logo, the four hero widths, three icons and
+  the 404 page's own sheet. `og:image` keeps its absolute URL, because there the origin is
+  already the root. R19 asserts a page's requests against the build's file list, from each
+  page's own address, in both variants; the not-found page is asserted to ask for nothing
+  relative at all, since it answers at an address it cannot know.
 - **U6. Diagram pages.** `noindex, follow` + title/description, drawings untouched (R8).
   **Made 2026-10-23:** the four heads are in `src/site/diagrams.mjs`, not in
   `docs/*.html`, because archify rewrites the whole document on the next export
@@ -97,6 +106,15 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
   module name). R8's "drawings untouched" is asserted as everything from
   `</head>` onward being byte-identical to the committed file. English copy, one
   entry per route, no canonical — see the amendment to ADR 0002.
+  **Made 2026-10-23, at the stage-1 deploy:** the four addresses are declared bare
+  (`/docs/<name>`), because that is the only form Pages answers with 200 — it 308s both
+  `.html` and the trailing-slash spelling to it — and because a `.html` in a company URL is
+  the noise ADR 0005 rejected the first time. The drawing keeps its file name; one mapping in
+  `build.mjs` says which file an address is served from. The four links now come from that
+  same table as `{{LINK:<key>}}` rather than from `href="docs/<name>.html"` typed by hand,
+  which is what makes them right in the English variant, where the hand-written form
+  resolved to `/en/docs/<name>.html` and answered 404. Older links, bookmarks and any
+  citation of the `.html` spelling keep working on the platform's 308 alone.
 - **U7. Structured data.** `Organization` + `WebSite` + `WebPage` generated from `company.mjs` (R11).
   **Made 2026-10-23:** one `<script type="application/ld+json">` per Page variant,
   last in the head, about 1.6KB. `WebSite` on the home Pages only, per ADR 0011's
@@ -160,10 +178,11 @@ curl -s  $W/robots.txt | wc -c                     # 611 B (565 authored + the b
 curl -s  $W/robots.txt | tail -3 | grep -i sitemap # the line whose absence made it a homepage, and ours, not the injected one
 curl -s  $W/sitemap.xml | head -1                  # <?xml …
 
-# R8  a Diagram page is reachable, noindexed, and says nothing about the firm
-curl -s -o /dev/null -w '%{http_code}\n' $W/docs/pharm-platform.html   # 200 — it stays linked   # measured: 308 -> /docs/pharm-platform, which answers 200 (see the note below)
-curl -s  $W/docs/pharm-platform.html | grep -c 'noindex, follow'       # 1
-curl -s  $W/docs/pharm-platform.html | grep -c 'application/ld+json'  # 0 — ADR 0011's U7 amendment
+# R8  a Diagram page answers at the address the table declares, noindexed, and saying nothing about the firm
+curl -s -o /dev/null -w '%{http_code}\n' $W/docs/pharm-platform      # 200 — the bare address, which is what a Diagram link now says
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' $W/docs/pharm-platform.html   # 308 to it: the file answers, the extension does not (ADR 0005)
+curl -s  $W/docs/pharm-platform | grep -c 'noindex, follow'      # 1
+curl -s  $W/docs/pharm-platform | grep -c 'application/ld+json'  # 0 — ADR 0011's U7 amendment
 
 # R9/R10  these are the deployment's own words. A file server run over dist/ sends no Cache-Control
 #         at all, so nothing here is verifiable before ship; the hashes come from the page, never a
@@ -176,6 +195,16 @@ curl -s -o /dev/null -w '%{http_code}\n' \
   "$(curl -s $W/ | grep -o 'og:image" content="[^"]*' | sed 's/.*content="//')"   # 200 at the name the page uses
 curl -s  $W/    | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="//'  # nl_NL
 curl -s  $W/en/ | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="//'  # en_US
+
+# R19  the requests themselves, read off each page and made as that page would make them. Asking
+#      only the Dutch page is how a whole variant of broken images survived Stage 1: / is the one
+#      address where a relative path happens to resolve.
+for p in "" "en/"; do
+  for r in $(curl -s $W/$p | grep -o '"/[^"]*assets/[^"]*"' | tr -d '"' | sort -u); do
+    printf '%s %s ' "$p" "$r"; curl -s -o /dev/null -w '%{http_code}\n' "$W$r"
+  done
+done                                               # every line 200, and the two lists are the same files
+curl -s $W/en/ | grep -cE '="(assets|docs)/'       # 0 — a request that begins with a name resolves against /en/
 
 # R11  the graph, in the bytes a crawler that runs no JavaScript receives. -A8 because the block
 #      opens with @context and @graph; the Organization node is six lines in, and -A3 ends inside it.
@@ -196,14 +225,21 @@ node --test tests/contact.test.mjs   # R14's guard: CRLF and `Subject:` through 
 ```
 
 **Measured at the stage-1 deploy, 2026-10-23:** every line above was run against
-`https://www.datawego.nl`, and five facts came back that the file did not hold.
+`https://www.datawego.nl`, and six facts came back that the file did not hold.
 The Diagram pages do not answer at the address the repository declares: Pages 308s
 `/docs/<name>.html` → `/docs/<name>` and 308s the trailing-slash form to the same
 bare address, so the only 200 is the bare one, and every Diagram link in the nav and
 the footer pays a redirect. ADR 0005's `form: "asset"` exception was written from the
 `.html` addresses' age rather than from what answers, which is the same class of
-mistake the plan cites the reference project for, mirrored. Until that is decided, the
-R8 lines need `-L`. `robots.txt` arrives as 3,287 B with Cloudflare's managed
+mistake the plan cites the reference project for, mirrored. The owner decided the bare
+address is the one to declare (R19, ADR 0005's second amendment), which leaves the older
+links to the platform's own 308 and takes `-L` out of the R8 lines. Two of the six are the
+same mistake in a worse form: the asset references — icons, logo, hero, social card — were
+relative, so the English homepage asked for `/en/assets/logo…` and got 404 for its own logo
+and every hero width, and the four Diagram links, hand-written as `href="docs/<name>.html`,
+answered 404 for the evidence of every Practice area shown in English. Neither was visible
+to any assertion above, because each one reads the Dutch page, where a relative path is
+right by accident of the root. `robots.txt` arrives as 3,287 B with Cloudflare's managed
 content-signals block in front of our 611 B, which also gives that file its own
 `max-age=14400` rather than the `/*` line (Dashboard ②). The apex still answers 200
 instead of 301 (Dashboard ①). And the served pages do not carry the `mailto:` links this

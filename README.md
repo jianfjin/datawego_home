@@ -169,7 +169,7 @@ project-local — no remote hotlinks.
 
 **What an image costs, and who decides.** A page asks for artwork in an
 attribute; `build.mjs` reads those requests, copies the bytes into
-`dist/assets/<name>.<contents>.<ext>` and rewrites the request to the new name.
+`dist/assets/<name>.<contents>.<ext>` and rewrites the request to the new name, rooted, so the same file is what the request means from `/en/` as from `/` (R19).
 Three things follow. A file no page asks for is never uploaded — `resources/`
 holds 15.7MB and eleven of its files, six of them identical copies of the same
 footer PNG, were shipping to nobody. A file a page does ask for had better exist,
@@ -209,6 +209,13 @@ guess, and one of those is still a Python module name. The head gains no
 says index neither, and Google asks that the two not be combined. It costs about
 half a kilobyte per page on a document that is 0.8MB of inline drawing already
 (ADR 0002, R8).
+
+**An address is not the file.** A Diagram page's address is `/docs/<name>` and its file is
+`docs/<name>.html`, and Cloudflare Pages answers the bare address while redirecting the
+extension to it. The route table declares the address, `build.mjs` says which file answers
+it, and the page links the address through a token the table fills in. The older spelling is
+not forgotten, only not repeated: it arrives at the same drawing by way of the platform's own
+308, and it would cost a redirect per click to keep naming it here (ADR 0005, R19).
 
 ## Repository housekeeping
 

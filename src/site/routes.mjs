@@ -19,10 +19,13 @@
  *   set until it goes live, because a half-emitted mirror is an invalid
  *   `hreflang` set rather than a smaller site.
  *
- * Paths are the trailing-slash directory form, the address Cloudflare Pages
- * answers with 200 (ADR 0005); `form: "asset"` is the one exception, for the
- * Diagram pages, whose `.html` addresses predate this plan and would break the
- * links already on the site if renamed.
+ * Paths are the address Cloudflare Pages answers with 200, and nothing else
+ * (ADR 0005). A Page is a directory: trailing slash, no extension. A Diagram
+ * page is an asset: no trailing slash, and no extension either — Pages serves
+ * the file docs/<name>.html at the bare /docs/<name> and answers the .html
+ * form with a 308 to it, so the bare form is what a link should say, and the
+ * links written before this plan keep working without this repository
+ * carrying their file's extension.
  */
 import { company } from "./company.mjs";
 
@@ -99,7 +102,7 @@ export const ROUTES = Object.freeze([
     form: "asset",
     indexable: false,
     status: "live",
-    path: { nl: "/docs/pharm-platform.html", en: "/docs/pharm-platform.html" },
+    path: { nl: "/docs/pharm-platform", en: "/docs/pharm-platform" },
     name: { nl: "Pharm Platform", en: "Pharm Platform" },
   },
   {
@@ -109,8 +112,8 @@ export const ROUTES = Object.freeze([
     indexable: false,
     status: "live",
     path: {
-      nl: "/docs/etl-dataflow-with-prepass.html",
-      en: "/docs/etl-dataflow-with-prepass.html",
+      nl: "/docs/etl-dataflow-with-prepass",
+      en: "/docs/etl-dataflow-with-prepass",
     },
     name: { nl: "EHR ETL Pipeline", en: "EHR ETL Pipeline" },
   },
@@ -121,8 +124,8 @@ export const ROUTES = Object.freeze([
     indexable: false,
     status: "live",
     path: {
-      nl: "/docs/marketing-research-swarm.html",
-      en: "/docs/marketing-research-swarm.html",
+      nl: "/docs/marketing-research-swarm",
+      en: "/docs/marketing-research-swarm",
     },
     name: { nl: "Marketing Research Swarm", en: "Marketing Research Swarm" },
   },
@@ -133,8 +136,8 @@ export const ROUTES = Object.freeze([
     indexable: false,
     status: "live",
     path: {
-      nl: "/docs/ehr-platform-architecture-with-prepass.html",
-      en: "/docs/ehr-platform-architecture-with-prepass.html",
+      nl: "/docs/ehr-platform-architecture-with-prepass",
+      en: "/docs/ehr-platform-architecture-with-prepass",
     },
     name: { nl: "EHR Transform Platform", en: "EHR Transform Platform" },
   },
@@ -236,8 +239,11 @@ export function routeProblems(routes = ROUTES) {
           problems.push(`${route.key}.${lang}: Dutch addresses cannot live under /en/`);
         }
       }
-      if (route.form === "asset" && path.endsWith("/")) {
-        problems.push(`${route.key}.${lang}: an asset address has no trailing slash`);
+      if (route.form === "asset") {
+        if (path.endsWith("/")) problems.push(`${route.key}.${lang}: an asset address has no trailing slash`);
+        if (path.endsWith(".html")) {
+          problems.push(`${route.key}.${lang}: an asset address names a file rather than the address Pages answers (ADR 0005)`);
+        }
       }
 
       /*

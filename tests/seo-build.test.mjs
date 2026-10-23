@@ -38,6 +38,7 @@ import { company } from "../src/site/company.mjs";
 import {
   LANGS,
   ROUTES,
+  ROOT_LANG,
   X_DEFAULT_LANG,
   alternateLinks,
   isVariantBearing,
@@ -51,8 +52,10 @@ import { isLedgered } from "../src/site/untranslated.mjs";
 import {
   CHROME_TOKENS,
   languageSwitch,
+  leakedRouteLinks,
   PAGE_SOURCES,
   renderVariant,
+  routeLinkToken,
   sourceProblems,
   themeBoot,
   visibleStrings,
@@ -716,7 +719,7 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, th
     const name = distPath(route, "nl");
     assert.ok(files.has(name), `${name} was not copied`);
     const served = String(files.get(name));
-    const original = read(`docs/${path.basename(route.path.nl)}`);
+    const original = read(distPath(route, "nl"));   // the drawing keeps the file name; the address lost its extension (ADR 0005)
 
     // This is where R8 is kept: the two documents diverge inside <head> and
     // meet again for the rest of the file. A drawing that came back edited is
@@ -859,10 +862,12 @@ test("the hero is asked for in widths, and the browser is the one that chooses",
   // Measured on what the browser is handed, after the build renamed every file
   // to its bytes: the descriptor has to be the width actually encoded, or a
   // candidate is picked for a resolution it cannot deliver.
-  const candidates = [...hero.matchAll(/assets\/hero-(\d+)\.[0-9a-f]{12}\.webp (\d+)w/g)];
+  // Rooted, on purpose: a srcset entry is resolved against the page, and the
+// English variant is not at the root (ADR 0005's second amendment).
+const candidates = [...hero.matchAll(/\/assets\/hero-(\d+)\.[0-9a-f]{12}\.webp (\d+)w/g)];
   assert.deepEqual(candidates.map((m) => Number(m[2])), [640, 1028, 1542, 2056], "the srcset's declared widths");
   assert.deepEqual(candidates.map((m) => Number(m[1])), [640, 1028, 1542, 2056], "each candidate is named for its own pixels, and each was written to dist/");
-  const fallback = /src="assets\/hero-(\d+)\.[0-9a-f]{12}\.webp"/.exec(hero);
+  const fallback = /src="\/assets\/hero-(\d+)\.[0-9a-f]{12}\.webp"/.exec(hero);
   assert.ok(fallback, "the src is not one of the candidates");
   assert.ok(candidates.map((m) => m[1]).includes(fallback[1]), "the fallback has to be a candidate the browser would also accept");
 });
@@ -886,7 +891,11 @@ test("an artwork reference is a request, and a mention is not", () => {
     files.get("index.html").includes("<!-- derived from resources/DataWeGo_banner3.png -->"),
     "the rewrite moved the prose as well as the request, which is how the honesty gets lost",
   );
-  assert.match(files.get("index.html"), /src="assets\/logo\.[0-9a-f]{12}\.svg"/, "the request was not rewritten to its content name");
+  assert.match(
+    files.get("index.html"),
+    /src="\/assets\/logo\.[0-9a-f]{12}\.svg"/,
+    "the request was not rewritten to its content name, rooted so that it means the same file from /en/ as from /",
+  );
 });
 
 test("artwork a page asks for that is not in the repository stops the build", () => {
@@ -937,7 +946,7 @@ test("a Diagram page says it is not for the index, and says what it shows (R8)",
     );
     assert.match(
       head,
-      /rel="icon"[^>]*href="assets\/favicon\.[0-9a-f]{12}\.svg"/,
+      /rel="icon"[^>]*href="\/assets\/favicon\.[0-9a-f]{12}\.svg"/,
       `${name} is an evidence page that opens in a tab with nothing in it`,
     );
 
@@ -995,7 +1004,7 @@ test("a drawing whose head disagrees with the generator stops the build", () => 
   assert.equal(noTitle.problems.length, 1, "an exporter that stopped writing titles would ship a page with none");
   assert.equal(noTitle.html, stripped, "a page the build refused got a head anyway");
 
-  const canonical = source.replace(/<\/title>/, `</title>\n  <link rel="canonical" href="https://www.datawego.nl/docs/pharm-platform.html" />`);
+  const canonical = source.replace(/<\/title>/, `</title>\n  <link rel="canonical" href="https://www.datawego.nl/docs/pharm-platform" />`);
   assert.match(
     applyDiagramHead(canonical, route).problems.join("\n"),
     /canonical/,
@@ -1005,4 +1014,112 @@ test("a drawing whose head disagrees with the generator stops the build", () => 
   const unlisted = applyDiagramHead(source, { key: "diagram-someone-forgot", indexable: false });
   assert.equal(unlisted.problems.length, 1, "a Diagram route with no entry ships the exporter's title, quietly");
   assert.match(unlisted.problems.join("\n"), /declares no head/);
+});
+
+/* ------------------------------------------------------------------ what a
+ * page asks for. Every one of these was invisible to the assertions above: a
+ * build can write the right file at the right address and still hand the reader
+ * a request that resolves somewhere else. Relative paths do that — they are
+ * correct next to the file they were written in and wrong everywhere else, and
+ * `x-default` is the "elsewhere" that matters, because it is the address Google
+ * picks when it has no better idea (ADR 0005).
+ */
+
+/** The requests a browser would actually make, from the markup alone. */
+function documentRequests(html) {
+  const found = [];
+  for (const match of html.matchAll(/\b(?:src|href|poster)="([^"]*)"|\bsrcset="([^"]*)"/g)) {
+    if (match[1] !== undefined) found.push(match[1]);
+    else found.push(...match[2].split(",").map((part) => part.trim().split(/\s+/)[0]));
+  }
+  return found.filter((request) => request && !/^(?:#|mailto:|tel:|data:|javascript:)/.test(request));
+}
+
+test("every file a page asks for is a file this build wrote, from that page's own address", () => {
+  const { files } = generate();
+  const written = new Set(files.keys());
+  const addresses = new Set(
+    ROUTES.filter((route) => route.status === "live").flatMap((route) =>
+      isVariantBearing(route) ? LANGS.map((lang) => urlOf(route.key, lang)) : [urlOf(route.key, ROOT_LANG)],
+    ),
+  );
+  const origin = new URL(`${company.origin}`).origin;
+
+  for (const route of ROUTES.filter((entry) => entry.status === "live")) {
+    for (const lang of isVariantBearing(route) ? LANGS : [ROOT_LANG]) {
+      const address = urlOf(route.key, lang);
+      const html = String(files.get(distPath(route, lang)));
+      for (const request of documentRequests(html)) {
+        const url = new URL(request, address);
+        // A script on someone else's host is not this build's to write, and a
+        // link out of the site is not either.
+        if (url.origin !== origin) continue;
+        const name = decodeURIComponent(url.pathname).replace(/^\//, "");
+        // The three ways Pages turns a path into a file, which are the three
+        // ways this build writes one: the name itself for anything in assets/,
+        // `index.html` inside a directory for a Page, and `<name>.html` for a
+        // Diagram, whose address lost its extension and whose file kept it.
+        const answerable =
+          written.has(name) || written.has(`${name.replace(/\/$/, "")}/index.html`) || written.has(`${name}.html`);
+        assert.ok(
+          addresses.has(url.href) || answerable,
+          `${address} asks for ${request}, which resolves to ${url.href}: no file this build writes answers there (ADR 0005)`,
+        );
+      }
+    }
+  }
+});
+
+test("the not-found page asks for nothing relative, because it answers at an address it cannot know", () => {
+  const { files } = generate();
+  const html = String(files.get("404.html"));
+  for (const request of documentRequests(html)) {
+    assert.match(
+      request,
+      /^(?:\/|https?:)/,
+      `404.html asks for ${request}, which resolves against whatever path the visitor mistyped rather than against the site`,
+    );
+  }
+});
+
+test("a Diagram link names the address Pages answers, in both variants (R8)", () => {
+  const diagrams = ROUTES.filter((route) => route.kind === "diagram" && route.status === "live");
+  assert.equal(diagrams.length, 4, "ADR 0002 counts four pieces of evidence");
+
+  for (const lang of LANGS) {
+    const html = variant(lang).html;
+    for (const route of diagrams) {
+      assert.ok(
+        html.includes(`href="${urlOf(route.key, lang)}"`),
+        `the ${lang} variant does not link ${route.key} at the address it answers at`,
+      );
+    }
+    assert.ok(
+      !/href="docs\//.test(html),
+      `the ${lang} variant links a Diagram by a path relative to itself, which is /en/docs/ half the time`,
+    );
+    assert.deepEqual(leakedRouteLinks(html), [], `${lang}: a link token reached the document a browser reads`);
+  }
+});
+
+test("a link naming no route stops the build instead of shipping a link to nowhere", () => {
+  const stray = renderWith("nl", (source) =>
+    source.replace(routeLinkToken("diagram-pharm-platform"), routeLinkToken("diagram-nobody-declared")),
+  );
+  assert.match(
+    stray.problems.join("\n"),
+    /diagram-nobody-declared/,
+    "a typo in a link key is the same class of mistake as a typo in a route, and it deserves the same answer",
+  );
+});
+
+test("no token of any kind survives into a file the browser is sent", () => {
+  const { files } = generate();
+  for (const [name, bytes] of files) {
+    const text = String(bytes);
+    for (const token of Object.values(CHROME_TOKENS)) {
+      assert.ok(!text.includes(token), `${name} still holds ${token}`);
+    }
+    assert.deepEqual(leakedRouteLinks(text), [], `${name} still holds a link token`);
+  }
 });
