@@ -48,8 +48,10 @@ import {
   PAGE_SOURCES,
   renderVariant,
   sourceProblems,
+  themeBoot,
   visibleStrings,
 } from "../src/site/page.mjs";
+import { headersFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
 
 const ROOT = new URL("..", import.meta.url);
 const read = (relative) => fs.readFileSync(new URL(relative, ROOT), "utf8");
@@ -473,6 +475,198 @@ test("a runtime that moved into the chrome instead of being deleted is still cau
   );
 });
 
+// ── the four files that are not pages (R5, R6, R7, R9) ──────────────────────
+//
+// A crawler reads these before it reads a word of copy, and none of them is
+// generated from a Page source, so nothing else in the suite covers them. The
+// claims here are the four the unit was written for: robots.txt is the stance
+// ADR 0007 chose and names no address of its own; the sitemap is the route
+// table; the cache headers are true of the names the build chose; and the
+// not-found page routes without asking to be indexed.
+
+const ROBOT_SOURCE = read("src/robots.txt");
+const NOT_FOUND = read("src/404.nl.html");
+
+const robotCase = (edit) => robotsFile(edit(ROBOT_SOURCE));
+const refused = (out, phrase, label) =>
+  assert.ok(
+    out.problems.some((problem) => problem.includes(phrase)),
+    `${label}: expected "${phrase}", got:\n  - ${out.problems.join("\n  - ")}`,
+  );
+const lines = (text) => text.split("\n");
+
+test("robots.txt refuses training, welcomes retrieval, and states one address", () => {
+  const { contents, problems } = robotsFile(ROBOT_SOURCE);
+  assert.deepEqual(problems, [], "the authored robots.txt is on speaking terms with its own guards");
+
+  // The one `Sitemap:` line is the build's, because it is the one URL in the
+  // file that nobody can check by eye.
+  assert.equal(lines(contents).filter((line) => /^Sitemap:/i.test(line)).length, 1);
+  assert.ok(contents.includes(`Sitemap: ${company.origin}/sitemap.xml`), "the sitemap is where the register's host says it is");
+
+  // Everything else is fetched. A `Disallow` here is a statement about fetching,
+  // not about keeping, and the two are not interchangeable (ADR 0007).
+  assert.ok(/^User-agent: \*\nAllow: \/$/m.test(contents), "every crawler may fetch the site");
+  assert.equal(
+    lines(contents).filter((line) => /^Disallow:\s*\/?docs/i.test(line)).length,
+    0,
+    "the diagrams are kept out of the index by a noindex, which only counts on a page that can be fetched",
+  );
+
+  for (const bot of ["GPTBot", "CCBot", "Google-Extended", "anthropic-ai", "Bytespider", "Diffbot", "FacebookBot"]) {
+    assert.ok(lines(contents).includes(`User-agent: ${bot}`), `${bot} is neither refused nor welcomed, which is the default someone else chose`);
+  }
+  for (const bot of ["OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Applebot", "GoogleOther"]) {
+    const at = contents.indexOf(`User-agent: ${bot}`);
+    assert.ok(at !== -1, `${bot} is unnamed, and a crawler that is not named inherits the * group`);
+    assert.ok(/Allow: \//.test(contents.slice(at, contents.indexOf("\n\n", at) === -1 ? undefined : contents.indexOf("\n\n", at))), `${bot} is not welcomed in its own group`);
+  }
+  assert.ok(
+    contents.indexOf("GoogleOther") > contents.indexOf("Disallow: /"),
+    "GoogleOther sits after the refuse block, so the file reads as two answers rather than one list with an exception in it",
+  );
+});
+
+test("the two edits that would undo ADR 0007 stop the build", () => {
+  // Both are improvements: someone hides the diagrams, or writes the sitemap line
+  // the file is supposed to gain. Each has to be a refusal rather than a smaller
+  // site, because either one works for a month before it costs a page.
+  refused(robotCase((text) => `${text}\nSitemap: https://www.datawego.nl/sitemap.xml\n`), "name the sitemap twice", "an authored Sitemap: line");
+  refused(
+    robotCase((text) => text.replace("User-agent: *\nAllow: /", "User-agent: *\nAllow: /\nDisallow: /docs")),
+    "the trap ADR 0007 records",
+    "the * group disallowing /docs",
+  );
+  refused(
+    robotCase((text) => text.replace("User-agent: GPTBot", "User-agent: SemrushBot\nDisallow: /docs/\n\nUser-agent: GPTBot")),
+    "the trap ADR 0007 records",
+    "a named group disallowing /docs/",
+  );
+  refused(
+    robotCase((text) => text.replace("User-agent: *\nAllow: /", "User-agent: *\nDisallow: /")),
+    "the 119KB generated answer",
+    "the * group disallowing everything",
+  );
+
+  // Consecutive `User-agent:` lines are one group (RFC 9309), which is what makes
+  // the seven-line refuse block above a refusal for seven crawlers rather than
+  // one. A parser that kept only the last would pass three of the four above and
+  // fail this.
+  const group = robotsFile("User-agent: FooBot\nUser-agent: *\nAllow: /\nDisallow: /docs/\n");
+  refused(group, "the trap ADR 0007 records", "a rule that belongs to a group of two agents");
+  refused(group, "the 119KB generated answer", "the same rule, read as the * group's");
+});
+
+test("sitemap.xml is the route table, and nothing else", () => {
+  const { contents, problems } = sitemapXml();
+  assert.deepEqual(problems, [], "a build with a live indexable route has a sitemap to write");
+  assert.match(contents, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
+
+  const locs = [...contents.matchAll(/<loc>([^<]*)<\/loc>/g)].map((match) => match[1]);
+  assert.deepEqual(locs, sitemapUrls(), "the sitemap and the route table are the same list, or they are two lists");
+  assert.equal(locs.length, 2, "Stage 1 ships two addresses (ADR 0002); Stage 2 raises this to ten with its copy");
+
+  // R3/R4, in the shape this suite can check without a network: the two places
+  // that name an address agree, and the third is the one that cannot be
+  // generated wrong because it reads the second.
+  for (const lang of LANGS) {
+    const canonical = /rel="canonical" href="([^"]*)"/.exec(variant(lang).html)[1];
+    assert.ok(locs.includes(canonical), `${urlOf("home", lang)}: the canonical names ${canonical}, which the sitemap does not list`);
+  }
+  for (const route of ROUTES) {
+    if (route.indexable || route.status !== "live") continue;
+    assert.ok(!contents.includes(urlOf(route.key, "nl")), `${route.key} is not an indexable surface (ADR 0002)`);
+  }
+
+  // A date this build cannot know is a date it should not print. R11 refuses an
+  // invented `dateModified` in the graph for the same reason.
+  assert.ok(!/<lastmod>/.test(contents), "the sitemap invented a modification date");
+});
+
+test("_headers caches the chrome by its name, and never claims a host", () => {
+  const { contents } = headersFile();
+
+  // ADR 0006, the trap: this file applies to a whole Pages project rather than
+  // to one host, so the noindex that would "fix" the pages.dev copy noindexes
+  // the canonical site with it.
+  assert.ok(!/x-robots-tag/i.test(contents), "an X-Robots-Tag here is a noindex on every host the project answers on");
+
+  const global = contents.indexOf("/*\n");
+  const assets = contents.indexOf("/assets/*\n");
+  assert.ok(global !== -1 && assets > global, "the chrome needs its own section, after the one every path matches");
+
+  const immutable = contents.indexOf("Cache-Control: public, max-age=31536000, immutable");
+  const detach = contents.indexOf("! Cache-Control");
+  assert.ok(detach > assets && detach < immutable, "and it has to detach first: a header applied twice is joined with a comma, so the asset would arrive saying max-age=0 and max-age=31536000 in one value");
+
+  assert.match(contents.slice(global, assets), /Cache-Control: public, max-age=0, must-revalidate/);
+  assert.equal(lines(contents).filter((line) => /^Strict-Transport-Security:/.test(line.trim())).length, 1, "HSTS once, on /*, and not on the asset paths that inherit it");
+  assert.match(contents, /X-Content-Type-Options: nosniff/);
+});
+
+test("the not-found page routes, and asks for nothing", () => {
+  const { files } = generate();
+  const shippedPage = files.get("404.html");
+  assert.ok(shippedPage, "an unknown address would be answered with the homepage, which is the defect this unit is a fix for (R7)");
+
+  // The page explains itself in a comment, so the claims about what it does not
+  // carry are read off its markup. That is also how static.mjs guards it, which
+  // is the pair worth keeping honest: if a reader and the build disagree about
+  // what a comment is, one of them is checking the wrong bytes.
+  const page = shippedPage.replace(/<!--[\s\S]*?-->/g, "");
+
+  assert.match(page, /^<html lang="nl">/m);
+  assert.match(page, /<title>DataWeGo — Pagina niet gevonden<\/title>/);
+  assert.match(page, /<meta name="robots" content="noindex, follow" \/>/);
+
+  // Soft 404 territory: a canonical to a page that exists tells Google this one
+  // is the same document, and this one is not.
+  assert.ok(!/rel="canonical"/.test(page), "a 404 that canonicalises the homepage is a soft 404");
+  assert.ok(!/hreflang\s*=/.test(page), "an hreflang set belongs to a Page and its variants, not to a response");
+
+  for (const lang of LANGS) {
+    assert.ok(page.includes(urlOf("home", lang)), `${urlOf("home", lang)} is not offered as a way out`);
+  }
+  assert.ok(page.includes(`mailto:${company.email}`), "and the mail address is the register's, restated once by the build");
+  assert.ok(!/datawego\.pages\.dev|https?:\/\/(?!www\.datawego\.nl)[a-z]/.test(page), "no address in it belongs to anything but the site");
+
+  // One fetch of the shared stylesheet, the theme resolved before paint, and no
+  // behaviour: the page must answer without running anything (ADR 0004).
+  const href = /<link rel="stylesheet" href="([^"]*)" \/>/.exec(page)[1];
+  assert.equal(href, `/${[...files.keys()].find((name) => name.endsWith(".css"))}`);
+  assert.ok(files.has(href.slice(1)), `${href} is not the stylesheet this build wrote`);
+  const boot = inlineScripts(page);
+  assert.equal(boot.length, 1, "one script runs on the page behind a wrong address, and it is the theme");
+  assert.equal(boot[0], themeBoot(variant("nl").html), "the theme boot is a copy of the home page's rather than the home page's");
+  assert.ok(!/<script[^>]+\bsrc=/.test(page), "a behaviour file on this page is a fetch before an answer");
+  assert.ok(!/localStorage\.getItem\("datawego-lang"\)|renderLang/.test(page), "the language runtime is nowhere in what a 404 sends (R13)");
+
+  // And it never echoes: a page that repeats the requested path repeats whatever
+  // arrives at it, into a page a crawler indexes and a header can be smuggled.
+  assert.ok(!/location\.(pathname|href)|document\.URL|error_page/.test(page), "the 404 reads the address it was served for");
+});
+
+test("a not-found page that stopped sharing the chrome is refused", () => {
+  // The two halves of the claim, both by the same mechanism: the css name and the
+  // boot body are the build's to know, so a source that lost either would ship a
+  // token, and a token is a request for a file called `{{CHROME_CSS}}`.
+  const noCss = notFoundPage({ source: NOT_FOUND.replace(CHROME_TOKENS.css, "site.css"), cssHref: "/assets/site.000000000000.css", boot: "/* */" });
+  refused(noCss, "stopped sharing the site's chrome", "a 404 with a hand-written stylesheet name");
+
+  const noBoot = notFoundPage({ source: NOT_FOUND.replace(CHROME_TOKENS.boot, "/* nothing */"), cssHref: "/assets/site.000000000000.css", boot: "/* */" });
+  refused(noBoot, "stopped sharing the site's chrome", "a 404 with the theme boot copied rather than filled");
+
+  const unfilled = notFoundPage({ source: NOT_FOUND, cssHref: null, boot: null });
+  refused(unfilled, CHROME_TOKENS.css, "a token nothing could fill, because no stylesheet was written");
+
+  const canonical = notFoundPage({
+    source: NOT_FOUND.replace(CHROME_TOKENS.css, `${CHROME_TOKENS.css}" />\n<link rel="canonical" href="https://www.datawego.nl/`),
+    cssHref: "/assets/site.000000000000.css",
+    boot: "/* */",
+  });
+  refused(canonical, "soft 404", "a 404 that canonicalises the homepage");
+});
+
 // ── the files the build claims to write ─────────────────────────────────────
 
 test("every name the build emits is a path inside dist/", () => {
@@ -494,7 +688,7 @@ test("an address maps to a file the way Pages expects to find it", () => {
   assert.equal(distPath(diagram, "nl"), path.join("docs", "pharm-platform.html"));
 });
 
-test("today's build is two pages, four diagrams, the chrome, the routing map, and the images", () => {
+test("today's build is two pages, four diagrams, the chrome, the routing map, the images, and four files that are not pages", () => {
   const { files } = generate();
   const pages = [...files.keys()].filter((name) => name.endsWith("index.html")).sort();
   assert.deepEqual(pages, ["en/index.html", "index.html"], "Stage 1 ships two addresses and no more");
@@ -519,6 +713,16 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, an
       `${name} is not named after what it contains, so it cannot be cached forever (R9)`,
     );
   }
+
+  for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html"]) {
+    assert.ok(files.has(name), `${name} was not written, so a crawler reads whatever the host has in its place`);
+    assert.ok(!name.endsWith(".html") || name === "404.html", `${name}: only the not-found page is HTML outside the address tree (R7)`);
+  }
+  assert.equal(
+    [...files.keys()].filter((name) => !name.startsWith("resources/")).length,
+    14,
+    "two pages, four diagrams, three chrome files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
+  );
 
   const assets = [...files.keys()].filter((name) => name.startsWith("resources/"));
   assert.ok(assets.length >= 2, "the page's own images were not copied, so they would 404 where they are served");

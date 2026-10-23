@@ -1,0 +1,50 @@
+<!doctype html>
+<!--
+  The page behind a 404, in Dutch, because Dutch owns the root (ADR 0001).
+
+  It is authored, not generated: there is no Page source to translate and no
+  address to canonicalise. Three things follow from that, and the build refuses
+  any of them coming back:
+
+  - no `rel=canonical`. Pointing a missing address at the homepage is how a site
+    asks to be read as a soft 404, which is the failure Google documents by name;
+  - no `hreflang`. The set is per Page, and this is not one (ADR 0002). The
+    English way out is a link, in the sentence it is written in;
+  - no `index`, so the copy here is never a search result and states nothing
+    about the company. It routes, and it stops.
+
+  The chrome is the site's own, by token: the stylesheet token and the theme-boot
+  token are filled with the same two files the generated pages carry, because a
+  dark-mode visitor must not be landed on white. The two addresses and the mail
+  address are filled from the route table and the register — this file quotes no
+  fact and no path of its own (R4).
+-->
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DataWeGo — Pagina niet gevonden</title>
+<meta name="robots" content="noindex, follow" />
+<script>{{CHROME_BOOT}}</script>
+<link rel="stylesheet" href="{{CHROME_CSS}}" />
+</head>
+<body>
+<main>
+  <section class="section">
+    <div class="container narrow">
+      <div class="stack" style="gap: var(--space-6);">
+        <p class="eyebrow">404</p>
+        <h1 class="display">Deze pagina vinden we niet.</h1>
+        <p class="lead">We hebben de adressen op deze site opnieuw gezet, en dit adres staat in geen van onze eigen lijsten.</p>
+        <p class="body-muted">Alles wat we vertellen, staat op de startpagina, en daar staat ook het formulier als je een vraag hebt. Wat je zocht, stond misschien onder een ouder adres: mail ons, dan zoeken we het op.</p>
+        <div class="row" style="flex-wrap: wrap;">
+          <a class="btn btn-primary" href="{{URL_HOME_NL}}">Naar de startpagina</a>
+          <a class="btn btn-secondary btn-arrow" href="{{URL_HOME_EN}}" lang="en">English site</a>
+          <a class="btn btn-quiet" href="mailto:{{COMPANY_EMAIL}}">Mailen</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

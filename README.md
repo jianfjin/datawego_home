@@ -24,7 +24,8 @@ page opened straight from disk has no origin for that request to come from.
 
   ```sh
   cp .dev.vars.example .dev.vars   # fill in the local values; .dev.vars is never committed
-  node deploy.js --skip-deploy     # generate dist/ — both variants, the chrome, diagrams, _routes.json
+  node deploy.js --skip-deploy     # generate dist/ — both variants, the chrome, diagrams,
+  #   robots.txt, sitemap.xml, 404.html, _headers, _routes.json
   npx wrangler pages dev           # http://localhost:8788 — page and Function together
   node --test                      # the endpoint's guards, the route table, the build
   ```
@@ -37,13 +38,17 @@ page opened straight from disk has no origin for that request to come from.
 ```
 ├── datawego-company-site.html   # the Page source: markup, tokens, styles, scripts, NL dictionary
 ├── build.mjs                    # the only writer of dist/; --check proves dist/ is current
-├── src/site/                    # what the generator reads, and what it is not allowed to invent
-│   ├── routes.mjs               #   every address, declared once (ADR 0005)
-│   ├── company.mjs              #   every company fact, declared once (ADR 0011)
-│   ├── page.mjs                 #   one source in, one address out: retirement, translation, chrome
-│   ├── dictionary.mjs           #   the source's `var NL`, read as build input
-│   ├── markup.mjs               #   the tag-stack walker the translation splices into
-│   └── untranslated.mjs         #   the ledger: the English the Dutch page is allowed to show
+├── src/                         # the generator's input, all of it
+│   ├── robots.txt               #   the crawler-facing stance, authored rather than inherited (ADR 0007)
+│   ├── 404.nl.html              #   the page behind an unknown address, in Dutch (R7)
+│   └── site/                    # what the generator reads, and what it is not allowed to invent
+│       ├── routes.mjs           #   every address, declared once (ADR 0005)
+│       ├── company.mjs          #   every company fact, declared once (ADR 0011)
+│       ├── page.mjs             #   one source in, one address out: retirement, translation, chrome
+│       ├── static.mjs           #   the four files that are not pages, derived from the two above
+│       ├── dictionary.mjs       #   the source's `var NL`, read as build input
+│       ├── markup.mjs           #   the tag-stack walker the translation splices into
+│       └── untranslated.mjs     #   the ledger: the English the Dutch page is allowed to show
 ├── functions/                   # Cloudflare Pages Functions — the server side
 │   └── api/
 │       ├── contact.js           #   POST /api/contact, the only route it owns
@@ -54,6 +59,11 @@ page opened straight from disk has no origin for that request to come from.
 ├── dist/                        # what actually gets uploaded — generated, never edited
 │   ├── index.html               #   the Dutch address: the root is Dutch (ADR 0001)
 │   ├── en/index.html            #   the English one
+│   ├── robots.txt               #   the stance above, plus the Sitemap: line only the build knows
+│   ├── sitemap.xml              #   every live indexable variant, read off the route table (R6)
+│   ├── 404.html                 #   so an unknown address is a 404 in Dutch, not the homepage (R7)
+│   ├── _headers                 #   HSTS, immutable chrome, and never an X-Robots-Tag (ADR 0006, R9)
+│   ├── docs/                    #   the four Diagram pages: served and linked, `noindex, follow` (ADR 0002)
 │   └── assets/                  #   site.css + site.js, named by their contents, shared by address
 ├── resources/                   # brand imagery (banner + logo variants)
 │   ├── DataWeGo_banner.png      #   hero banner

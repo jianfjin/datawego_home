@@ -19,8 +19,9 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { company } from "./src/site/company.mjs";
-import { ROUTES, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
-import { CHROME_TOKENS, renderVariant, sourceProblems } from "./src/site/page.mjs";
+import { LANGS, ROUTES, ROOT_LANG, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
+import { CHROME_TOKENS, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
+import { staticAssets } from "./src/site/static.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
@@ -49,6 +50,7 @@ function distPath(route, lang) {
 function generate() {
   const problems = [];
   const files = new Map();
+  let boot = null;
 
   assertRoutes();
   problems.push(...sourceProblems(read("datawego-company-site.html")));
@@ -60,13 +62,19 @@ function generate() {
     if (isVariantBearing(route)) {
       const sourceFile = pageSourceFor(route);
       const source = read(sourceFile);
-      for (const lang of ["nl", "en"]) {
+      for (const lang of LANGS) {
         const out = renderVariant({ route, lang, source });
         if (out.problems.length) {
           problems.push(`${route.key}.${lang}:\n    - ${out.problems.join("\n    - ")}`);
           continue;
         }
         files.set(distPath(route, lang), linkChrome(out, files));
+
+        // The not-found page is the one document in the build that is not
+        // rendered from a Page source, so the chrome it shares is read off the
+        // page that is — the Dutch home, because the Dutch root is what an
+        // unknown address falls back to (ADR 0001).
+        if (!ONLY && route.key === "home" && lang === ROOT_LANG) boot = themeBoot(out.html, problems);
       }
       continue;
     }
@@ -81,13 +89,26 @@ function generate() {
     files.set(distPath(route, "nl"), read(from));
   }
 
-  for (const [name, bytes] of files) {
-    const leaked = Object.values(CHROME_TOKENS).find((token) => String(bytes).includes(token));
-    if (leaked) problems.push(`${name} still holds ${leaked} — the chrome was rendered but never linked`);
+  if (!ONLY) {
+    const statics = staticAssets({
+      robotsSource: read("src/robots.txt"),
+      notFoundSource: read("src/404.nl.html"),
+      cssHref: sharedStylesheet(files, problems),
+      boot,
+    });
+    problems.push(...statics.problems);
+    for (const [name, contents] of statics.files) files.set(name, contents);
   }
 
   if (ONLY === "pages" || ONLY === null) copyTree("resources", files);
   files.set("_routes.json", ROUTES_JSON);
+
+  // Last, so a step added after it cannot leave a token in what this build
+  // claims to have written. A browser asks for `{{CHROME_CSS}}` as a path.
+  for (const [name, bytes] of files) {
+    const leaked = Object.values(CHROME_TOKENS).find((token) => String(bytes).includes(token));
+    if (leaked) problems.push(`${name} still holds ${leaked} — the chrome was rendered but never linked`);
+  }
 
   return { files, problems };
 }
@@ -112,6 +133,21 @@ function linkChrome(rendered, files) {
     html = html.split(token).join(`/${name}`);
   }
   return html;
+}
+
+/**
+ * The chrome's one stylesheet, by the name this build gave it.
+ *
+ * Asked of the files rather than recomputed, because the name is a hash of the
+ * contents and a second way to compute it is a second thing that can be wrong.
+ */
+function sharedStylesheet(files, problems) {
+  const sheets = [...files.keys()].filter((name) => name.endsWith(".css"));
+  if (sheets.length !== 1) {
+    problems.push(`${sheets.length} stylesheets were written, so the not-found page cannot be pointed at the one the site shares (ADR 0004)`);
+    return null;
+  }
+  return `/${sheets[0]}`;
 }
 
 /** The authored source behind a route. One per Page for now; U9 adds the others. */

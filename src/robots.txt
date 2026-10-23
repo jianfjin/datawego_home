@@ -1,0 +1,22 @@
+# DataWeGo's own answer to a crawler that asks (docs/adr/0007). The build
+# appends the Sitemap: line, so this file states no address of its own.
+User-agent: *
+Allow: /
+
+# Training crawlers: refused.
+User-agent: GPTBot
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: anthropic-ai
+User-agent: Bytespider
+User-agent: Diffbot
+User-agent: FacebookBot
+Disallow: /
+
+# Retrieval and answer crawlers: welcome, GoogleOther included.
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Applebot
+User-agent: GoogleOther
+Allow: /

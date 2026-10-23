@@ -261,7 +261,15 @@ function translateScriptStrings(html, { lookup, problems }) {
  * The build replaces the tokens with the hashed names, so nothing here can know
  * a filename, and a token left unsubstituted is a failed build.
  */
-export const CHROME_TOKENS = Object.freeze({ css: "{{CHROME_CSS}}", js: "{{CHROME_JS}}" });
+export const CHROME_TOKENS = Object.freeze({
+  css: "{{CHROME_CSS}}",
+  js: "{{CHROME_JS}}",
+  // A third token, and deliberately not a third kind of chrome: `linkChrome`
+  // names what `splitChrome` returns, and the boot is never returned by it. It
+  // exists so the not-found page can be filled by the same loop that fills the
+  // pages, and so a build that forgets to fill it fails the leak check.
+  boot: "{{CHROME_BOOT}}",
+});
 
 function spans(html, open, close, after = 0) {
   const found = [];
@@ -314,6 +322,36 @@ function splitChrome(html, problems) {
     out = out.slice(0, block.start) + tag + out.slice(block.end);
   }
   return { out, chrome };
+}
+
+/**
+ * The theme boot, for the one document that is not rendered from a Page source.
+ *
+ * `404.html` is authored rather than derived (see `src/site/static.mjs`), and it
+ * still has to resolve the theme before first paint: a visitor who set dark mode
+ * and mistyped a URL must not be landed on white. Copying the block would make
+ * two answers to one question, and only one of them gets edited, so this reads it
+ * out of the page that already runs it.
+ *
+ * It is the head's script, not the chrome's. That difference is the whole reason
+ * the boot was never externalised: a file that has to be fetched before the page
+ * is legible is the thing ADR 0004 refuses to pay twice for.
+ */
+export function themeBoot(html, problems = []) {
+  const headEnd = html.indexOf("</head>");
+  if (headEnd === -1) {
+    problems.push("the page has no </head>, so its theme boot cannot be told from its behaviour");
+    return null;
+  }
+
+  const inHead = spans(html, "<script>", "</script>").filter((block) => block.start < headEnd);
+  if (inHead.length !== 1) {
+    problems.push(
+      `the head holds ${inHead.length} inline <script> blocks, and the theme boot is one — whatever the not-found page runs would then be a guess`,
+    );
+    return null;
+  }
+  return inHead[0].body;
 }
 
 /** The `<head>` block the route table owes this variant, in declaration order. */

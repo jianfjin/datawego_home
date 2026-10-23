@@ -1,8 +1,10 @@
 # DataWeGo Company Website
 
-The public single-file site for a Dutch data engineering & AI consultancy,
-deployed to Cloudflare Pages at datawego.nl. Copy is authored in English; a
-Dutch variant is applied in the browser.
+The public site for a Dutch data engineering & AI consultancy, deployed to
+Cloudflare Pages at www.datawego.nl (ADR 0006). It is authored as one Page
+source in English with its Dutch dictionary inside it, and `build.mjs` generates
+the Dutch and English variants into `dist/`, so what is served answers in its own
+language without running anything (ADR 0001, ADR 0003).
 
 ## Language
 
@@ -49,6 +51,20 @@ _Avoid_: translation (the words differ; a variant that says something the other 
 **Page source**:
 The one authored file a Page is generated from — its English markup and that Page's Dutch entries. A site of five Pages has five Page sources and ten generated files.
 _Avoid_: template, master file (the source is not a shell waiting for data; it is the Page, written once)
+
+**Not-found page**:
+What an unknown address is answered with: one Dutch page, `noindex, follow`, with
+a way out and no address of its own. It is a response rather than a Page, which is
+why it carries no canonical and no `hreflang` set.
+_Avoid_: 404 (the status it accompanies, not the page), soft 404 (a page that
+exists pretending to be this one, which is the failure it exists to prevent)
+
+**Fetching and keeping**:
+The two separate questions a site answers a crawler: whether it may read a path
+(`robots.txt`), and whether what it read may be indexed (a `noindex` in the page).
+Neither substitutes for the other, and `docs/` is deliberately fetchable and
+deliberately not indexed.
+_Avoid_: blocking (which of the two it blocks is the whole question), hiding
 
 **Chrome**:
 What every Page has in common — navigation, footer, styling, behavior. Chrome is reached by a shared address rather than repeated per Page, so one visit pays for it once.
