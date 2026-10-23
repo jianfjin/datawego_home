@@ -39,7 +39,6 @@ export const LEDGER = Object.freeze({
   RAG: { kind: "name", why: "an abbreviation, and the one a Dutch engineer uses" },
 
   // ── the same in Dutch: an English word that is also the Dutch word ────────
-  Platform: { kind: "same in dutch", why: "platform" },
   PLATFORM: { kind: "same in dutch", why: "the section eyebrow; `PLATFORM` is the Dutch word, capitalised" },
   Online: { kind: "same in dutch", why: "online" },
   Model: { kind: "same in dutch", why: "model — the `dt` one; the stage `Model` has its own qualified key" },

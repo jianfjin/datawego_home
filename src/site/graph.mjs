@@ -21,11 +21,13 @@
  *
  * `@id`s make the nodes one description rather than several: the home Page
  * declares the Organization and the Site, and everything else that ever points
- * at them (U9's `Service`, the breadcrumbs) will point by address instead of
- * restating KvK numbers in a second place.
+ * at them — U9's `Service`, the breadcrumbs, every `WebPage` on the site —
+ * points by address instead of restating KvK numbers in a second place. The one
+ * pointer that leaves its own document is `#website` on a Page that is not the
+ * home one, which is where ADR 0011 puts the Site node.
  */
 import { company } from "./company.mjs";
-import { LANGS, urlOf } from "./routes.mjs";
+import { LANGS, breadcrumbs, urlOf } from "./routes.mjs";
 
 /** The site's own root, as schema.org wants it: the origin with a slash on it. */
 const SITE_ROOT = `${company.origin}/`;
@@ -72,10 +74,67 @@ export function webSiteNode() {
   };
 }
 
-/** This address, described. Its `@id` is the canonical, so the two cannot disagree. */
-export function webPageNode({ route, lang, title, description }) {
+/**
+ * One Practice area, described as the offer the Page above it says it is.
+ *
+ * ADR 0011 puts this node on the three Practice-area Pages and not on the
+ * industry Page: selling data platforms is a service, selling them to a hospital
+ * is a place. `provider` points at the Organization rather than repeating the KvK
+ * number, which is the whole reason the `@id`s exist.
+ *
+ * `areaServed` is the register's ISO code and not a place name, because the
+ * country is already stated once, in the Organization's address; "Nederland"
+ * beside `NL` would be a second fact to keep true.
+ */
+export function serviceNode({ route, lang }) {
   const canonical = urlOf(route.key, lang);
   return {
+    "@type": "Service",
+    "@id": `${canonical}#service`,
+    name: route.name[lang],
+    url: canonical,
+    provider: { "@id": `${SITE_ROOT}#organization` },
+    areaServed: company.serviceAreaCountryCode,
+  };
+}
+
+/**
+ * The trail above this address, generated twice per route.
+ *
+ * A breadcrumb is the one part of the graph that is a list of *other* pages, so
+ * it is the easiest place on the site to state an English page's name in Dutch;
+ * the crumbs come from `breadcrumbs()`, in this variant's language, which is the
+ * same table the navigation and the `hreflang` set read.
+ *
+ * The home Page gets none. It is one crumb deep, and a trail that leads nowhere
+ * above the page it is standing on is the page pointing at itself.
+ */
+export function breadcrumbNode({ route, lang }) {
+  const canonical = urlOf(route.key, lang);
+  return {
+    "@type": "BreadcrumbList",
+    "@id": `${canonical}#breadcrumb`,
+    itemListElement: breadcrumbs(route.key, lang).map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.name,
+      item: crumb.href,
+    })),
+  };
+}
+
+/**
+ * This address, described. Its `@id` is the canonical, so the two cannot disagree.
+ *
+ * What the page owns is hung off it by address, never restated: the `Service`
+ * beside it (Practice areas) and the trail above it (every Page but the home
+ * one). Both point at a node in the same `@graph`, so a reader that resolves one
+ * resolves the claim, and a reader that resolves neither finds nothing typed
+ * twice to disagree with.
+ */
+export function webPageNode({ route, lang, title, description }) {
+  const canonical = urlOf(route.key, lang);
+  const node = {
     "@type": "WebPage",
     "@id": canonical,
     url: canonical,
@@ -85,12 +144,17 @@ export function webPageNode({ route, lang, title, description }) {
     isPartOf: { "@id": `${SITE_ROOT}#website` },
     about: { "@id": `${SITE_ROOT}#organization` },
   };
+  if (route.practice) node.mainEntity = { "@id": `${canonical}#service` };
+  if (route.key !== HOME_ROUTE) node.breadcrumb = { "@id": `${canonical}#breadcrumb` };
+  return node;
 }
 
 /** What one Page says about itself, in one `<script>`. */
 export function pageGraph({ route, lang, title, description }) {
   const graph = [organizationNode()];
   if (route.key === HOME_ROUTE) graph.push(webSiteNode());
+  if (route.practice) graph.push(serviceNode({ route, lang }));
+  if (route.key !== HOME_ROUTE) graph.push(breadcrumbNode({ route, lang }));
   graph.push(webPageNode({ route, lang, title, description }));
   return { "@context": "https://schema.org", "@graph": graph };
 }

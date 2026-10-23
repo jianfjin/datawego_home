@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-23
 artifact_contract: ce-unified-plan/v1
 artifact_readiness: implementation-ready
-product_contract_source: grilling session 2026-10-23 (ADR 0001–0012)
+product_contract_source: grilling session 2026-10-23 (ADR 0001–0013)
 execution: code
 ---
 
@@ -52,7 +52,8 @@ The mechanism that makes this survivable is generation: a route table is the onl
 
 ### Key Decisions
 
-Decided in session, each with its own ADR: Dutch owns the root (0001) · five indexable surfaces, Case studies and Diagram pages out of the index (0002) · variants generated at build time, dictionary parity enforced (0003) · chrome shared by address (0004) · routes declared once in trailing-slash form (0005) · www canonical, no language sniffing (0006) · own robots.txt with a stated AI stance, `/docs/` never disallowed (0007) · the site names nobody (0008) · no Google Business Profile (0009) · attribution inside the enquiry, no analytics (0010) · `Organization`, not `LocalBusiness` (0011) · the sole-practice clause on every Page (0012).
+Decided in session, each with its own ADR: Dutch owns the root (0001) · five indexable surfaces, Case studies and Diagram pages out of the index (0002) · variants generated at build time, dictionary parity enforced (0003) · chrome shared by address (0004) · routes declared once in trailing-slash form (0005) · www canonical, no language sniffing (0006) · own robots.txt with a stated AI stance, `/docs/` never disallowed (0007) · the site names nobody (0008) · no Google Business Profile (0009) · attribution inside the enquiry, no analytics (0010) · `Organization`, not `LocalBusiness` (0011) · the sole-practice clause on every Page (0012) ·
+the page HTML shared by composition from the home document (0013).
 
 ### Scope Boundaries
 
@@ -140,6 +141,34 @@ Verified on 2026-10-22/23 against the live site and the repository: three hosts 
 ### Stage 2 — structure
 
 - **U9. Four new Page sources** (`/dataplatforms/`, `/ai-oplossingen/`, `/cloud-en-enterprise-software/`, `/zorg-en-life-sciences/`) + `Service`/`BreadcrumbList` + route-table-driven navigation on all ten addresses (R3, R11, R12). No prose invented yet: placeholders are forbidden — a page ships with its copy or does not ship.
+  **Made 2026-10-23:** the four sources are Bodies, not documents (ADR 0013) — each is
+  sections only, and `src/site/chrome.mjs` composes it onto the home document, whose head,
+  contact ask and footer therefore move verbatim into four more Pages. Ten addresses
+  ship now, `dist/` is 31 files, and `node --test` is 107.
+  Navigation was the first thing the composition could not inherit: the prototype's header
+  held five anchor links to Sections of a one-page site (`Company`, `Capabilities`,
+  `Platform`, `Industries`, `Approach`), and those Sections are exactly what a Body replaces,
+  so all five would have scrolled to nothing on each of the eight new variants. The nav is now
+  the route table's four Page links plus the `#contact` ask, and the three dictionary keys and
+  one `untranslated.mjs` ledger entry that only those links used went with them — dead keys are refused by
+  `sourceProblems`, so this is the one place in the plan where shipping U9 deleted copy.
+  `Service` and `BreadcrumbList` arrived as ADR 0011 promised: `serviceNode` names the
+  Practice area with the route table's own `name` and points `provider` at the
+  `Organization` by `@id` rather than describing the firm twice, and `BreadcrumbList` is on
+  the four sub Pages and not on home, because a crumb trail that starts where you are
+  standing is noise. `WebPage` gained `mainEntity` (Practice-area Pages) and `breadcrumb`
+  pointers so the nodes named in the graph are the ones the graph describes. `WebSite` stays
+  on home alone — that count is the assertion, since an exemption written into a test is
+  exactly the kind of thing a later edit forgets why it exists.
+  The clause (R12) is placed by a slot rather than by prose: `data-od-id="practice-clause"`
+  is authored empty in the contact section, because a placement keyed to the sentence beside
+  it stops matching in Dutch, where the sentence is translated and the placement is not.
+  Two guards hold the "no prose invented yet" promise from the other side. Every visible
+  English string on all five live Pages must already be a string the home document says, or
+  the clause's own text — a sentence typed into a Body before U10 fails that test by name,
+  and it is the line U10 must change deliberately rather than by accident. And a route whose
+  `name` stopped matching the dictionary is refused, because the nav now speaks the table's
+  words in both variants.
 
 ### Stage 3 — words
 
@@ -165,6 +194,21 @@ for u in $(curl -s $W/sitemap.xml | grep -o '<loc>[^<]*' | cut -c6-); do
     "$(echo "$page" | grep -o 'rel="canonical" href="[^"]*' | sed 's/.*href="//')" \
     "$(echo "$page" | grep -o 'hreflang="[^"]*" href="[^"]*' | sed 's/.*href="//' | paste -sd' ')"
 done   # each address canonicals to itself; both variants list the same pair, x-default last
+       # Ten rows since U9, so this walk now covers the four new Pages without being edited —
+       # which is the only reason it was worth writing as a loop in the first place.
+curl -s $W/sitemap.xml | grep -c '<loc>'                # 10 — five Pages x two variants (R6)
+curl -s $W/dataplatforms/ | grep -c 'data-nav='          # 4 — the same nav as every other Page,
+                                                        #     from the route table rather than the page
+# every fragment link on every address resolves inside the document it stands in (ADR 0013)
+for p in "" "en/" "dataplatforms/" "en/data-platforms/" "ai-oplossingen/" "en/ai-solutions/" \
+         "cloud-en-enterprise-software/" "en/cloud-and-enterprise-software/" \
+         "zorg-en-life-sciences/" "en/healthcare-life-sciences/"; do
+  page=$(curl -s "$W/$p")
+  for a in $(echo "$page" | grep -oE 'href="#[a-z0-9-]+"' | sed 's/.*="#//;s/"$//' | sort -u); do
+    printf '%s#%s -> %s\n' "/$p" "$a" "$(echo "$page" | grep -c "id=\"$a\"")"
+  done
+done   # every count nonzero. A browser scrolls to an absent id and reports nothing, so this is
+       # the R7/R19 class of defect in the one form no curl of a status code can see.
 
 # R7  the defect, gone. The two content-type lines say "not text/html" rather than naming a
 #     type: the answer that matters is that the request stopped reaching the homepage.
@@ -199,14 +243,17 @@ curl -s  $W/en/ | grep -o 'og:locale" content="[A-Za-z_]*' | sed 's/.*content="/
 # R19  the requests themselves, read off each page and made as that page would make them. Asking
 #      only the Dutch page is how a whole variant of broken images survived Stage 1: / is the one
 #      address where a relative path happens to resolve.
-for p in "" "en/"; do
+for p in "" "en/" "dataplatforms/" "en/data-platforms/" "ai-oplossingen/" "en/ai-solutions/" \
+         "cloud-en-enterprise-software/" "en/cloud-and-enterprise-software/" \
+         "zorg-en-life-sciences/" "en/healthcare-life-sciences/"; do
   for r in $(curl -s $W/$p | grep -oE '/assets/[a-z0-9._-]*\.(css|js|svg|png|jpg|webp)' | sort -u); do
     printf '%s %s ' "$p" "$r"; curl -s -o /dev/null -w '%{http_code}\n' "$W$r"
   done
-done   # every line 200, and the two lists are the same files but for site.<hash>.js, which differs
-       # by variant on purpose. Stop the name at its extension: a srcset carries " 640w," after
-       # each entry, and a pattern that runs to the closing quote asks for that as a URL and reports
-       # 000 for a file that was never named.
+done   # every line 200. The ten lists are the same files bar site.<hash>.js, which differs by
+       # variant on purpose, and the four Bodies add no artwork of their own — they ask for the
+       # chrome's. Stop the name at its extension: a srcset carries " 640w," after each entry, and
+       # a pattern that runs to the closing quote asks for that as a URL and reports 000 for a
+       # file that was never named.
 curl -s $W/en/ | grep -cE '="(assets|docs)/'       # 0 — a request that begins with a name resolves against /en/
 curl -s $W/en/ | grep -o 'href="[^"]*docs/[^"]*"' | sort -u   # four absolute bare addresses, not four 404s
 
@@ -216,6 +263,12 @@ curl -s $W/ | grep -A8 'application/ld+json' | grep -q '"@type": "Organization"'
 curl -s $W/ | grep -c '"legalName"\|"dateModified"\|LocalBusiness'   # 0 — the refusals in ADR 0011
 curl -s $W/ | grep -c '"@type": "WebSite"'                           # 1 — home Pages only
 curl -s $W/en/ | grep -c '"@type": "WebSite"'                       # 1
+curl -s $W/dataplatforms/ | grep -c '"@type": "WebSite"'            # 0 — the exemption is a count,
+                                                                    #     not a comment
+curl -s $W/dataplatforms/ | grep -c '"@type": "Service"'            # 1 — named by the route table,
+curl -s $W/zorg-en-life-sciences/ | grep -c '"@type": "Service"'    # 0 — an industry Page is not a kind of work
+curl -s $W/dataplatforms/ | grep -c '"@type": "BreadcrumbList"'     # 1 on the four sub Pages, 0 on home
+curl -s $W/dataplatforms/ | grep -c 'data-od-id="practice-clause"'  # 1 — the clause, once, per Page (R12)
 
 # R15  the build refuses a half-translated page and a dist/ that has fallen behind
 node build.mjs --check && echo "dist current"

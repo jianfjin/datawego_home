@@ -33,6 +33,7 @@ import {
   sitemapUrls,
   urlOf,
 } from "../src/site/routes.mjs";
+import { navigation } from "../src/site/chrome.mjs";
 
 const PAGE_SOURCE = new URL("../datawego-company-site.html", import.meta.url);
 const pageHtml = () => readFileSync(PAGE_SOURCE, "utf8");
@@ -117,18 +118,37 @@ test("no address carries a file extension, and only a Page address carries a sla
 
 // ── what is real today, versus what is merely declared ──────────────────────
 
-test("the sitemap lists live indexable variants only: two rows after Stage 1 (R6)", () => {
-  assert.deepEqual(sitemapUrls(), ["https://www.datawego.nl/", "https://www.datawego.nl/en/"]);
+test("the sitemap lists live indexable variants only: ten rows after Stage 2 (R6)", () => {
+  // Written out rather than derived, so the test can disagree with the table.
+  assert.deepEqual(sitemapUrls(), [
+    "https://www.datawego.nl/",
+    "https://www.datawego.nl/en/",
+    "https://www.datawego.nl/dataplatforms/",
+    "https://www.datawego.nl/en/data-platforms/",
+    "https://www.datawego.nl/ai-oplossingen/",
+    "https://www.datawego.nl/en/ai-solutions/",
+    "https://www.datawego.nl/cloud-en-enterprise-software/",
+    "https://www.datawego.nl/en/cloud-and-enterprise-software/",
+    "https://www.datawego.nl/zorg-en-life-sciences/",
+    "https://www.datawego.nl/en/healthcare-life-sciences/",
+  ]);
 });
 
-test("a planned route leaks into no sitemap, no link and no alternate set", () => {
-  const planned = ROUTES.filter((route) => route.status === "planned");
-  assert.equal(planned.length, 4, "the four Stage 2 Pages should be declared but dark");
+test("nothing is declared in the dark, and no live Page is out of reach (R6)", () => {
+  // Stage 1's guard was that a planned route leaks into nothing. Stage 2 took
+  // those four Pages live, so the same muscle now points the other way, and the
+  // failure it is looking for has changed shape: not a half-emitted mirror, but
+  // a page that exists, says it exists, and can be reached from nowhere.
+  assert.deepEqual(
+    ROUTES.filter((route) => route.status === "planned"),
+    [],
+    "a dark route is now a decision not to ship something, and the table does not say that",
+  );
 
   const shipped = new Set([...liveUrls("nl"), ...liveUrls("en"), ...sitemapUrls()]);
-  for (const route of planned) {
+  for (const route of ROUTES) {
     for (const lang of LANGS) {
-      assert.ok(!shipped.has(urlOf(route.key, lang)), `${route.key}.${lang} shipped early`);
+      assert.ok(shipped.has(urlOf(route.key, lang)), `${route.key}.${lang} is declared and shipped nowhere`);
     }
   }
 
@@ -137,6 +157,14 @@ test("a planned route leaks into no sitemap, no link and no alternate set", () =
     for (const link of alternateLinks(route.key)) {
       assert.ok(shipped.has(link.href), `${route.key}: alternate ${link.lang} points at a dark route`);
     }
+  }
+
+  // Reach. The navigation is the one set of links every Page carries, so a live
+  // Page the navigation does not name is an address a crawler reaches only if it
+  // guesses it - which is what a sitemap row is for, and not what a site is for.
+  const nav = navigation();
+  for (const route of ROUTES.filter((r) => r.kind === "page" && r.status === "live" && r.key !== "home")) {
+    assert.ok(nav.includes(`{{LINK:${route.key}}}`), `${route.key}: indexable, and named by no navigation`);
   }
 });
 

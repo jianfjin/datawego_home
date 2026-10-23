@@ -22,12 +22,20 @@
  */
 import { company } from "./company.mjs";
 import { LANGS, ROOT_LANG, alternateLinks, urlOf } from "./routes.mjs";
+import { applyChrome, composePage, practiceClause } from "./chrome.mjs";
+import { isBodyPage, pageHead, pageNameToken } from "./pages.mjs";
 import { makeLookup, readDictionary, readPageMeta } from "./dictionary.mjs";
 import { applyDictionary, decodeEntities, encodeText, norm } from "./markup.mjs";
 import { graphScript, pageGraph } from "./graph.mjs";
 import { LEDGER, isLedgered } from "./untranslated.mjs";
 
-/** The authored Page source for the home address, relative to the repo root. */
+/**
+ * The authored Page source for the home address, relative to the repo root.
+ *
+ * Home is the only complete document, and it is also the chrome every other Page
+ * is composed onto (ADR 0004, `src/site/chrome.mjs`), which is why there is one
+ * entry here and four files in `src/pages/`.
+ */
 export const PAGE_SOURCES = Object.freeze({ home: "datawego-company-site.html" });
 
 /**
@@ -55,6 +63,10 @@ export function routeLinkToken(key) {
 /** The link tokens still sitting in a document, which is a build that stopped early. */
 export function leakedRouteLinks(document) {
   return [...String(document).matchAll(ROUTE_LINK)].map((match) => match[1]);
+}
+
+function fillPageName(html, route) {
+  return html.split(pageNameToken()).join(encodeText(route.name.en));
 }
 
 function fillRouteLinks(html, lang, problems) {
@@ -483,22 +495,28 @@ export function visibleStrings(html) {
  * Returns `{ html, problems }`. A non-empty `problems` array is a failed build
  * (R15), not a warning printed and then shipped past.
  */
-export function renderVariant({ route, lang, source }) {
+export function renderVariant({ route, lang, source, chromeSource = null }) {
   if (!LANGS.includes(lang)) throw new Error(`no such language variant: ${lang}`);
   const problems = [];
 
-  const entries = readDictionary(source);
-  const pageMeta = readPageMeta(source);
-  const authored = readHeadTexts(source);
+  const entries = readDictionary(chromeSource ?? source);
+  const pageMeta = isBodyPage(route.key) ? null : readPageMeta(source);
+  const authored = readHeadTexts(chromeSource ?? source);
   const lookup = makeLookup(entries);
 
   let html = source;
+  if (chromeSource !== null) html = composePage({ chromeSource, bodyHtml: source, lang, problems });
+  else html = applyChrome(html, lang, problems);
   for (const edit of retirements(lang)) html = applyEdit(html, edit, problems);
 
   html = fillRouteLinks(html, lang, problems);
+  html = fillPageName(html, route);
 
-  const title = lang === ROOT_LANG ? pageMeta.titleNl : authored.title;
-  const description = lang === ROOT_LANG ? pageMeta.descNl : authored.description;
+  const derived = isBodyPage(route.key)
+    ? pageHead({ route, lang, lookup })
+    : { title: lang === ROOT_LANG ? pageMeta.titleNl : authored.title, description: lang === ROOT_LANG ? pageMeta.descNl : authored.description };
+  const title = derived.title;
+  const description = derived.description;
   html = replaceHead(html, { route, lang, title, description, problems });
 
   if (lang === ROOT_LANG) {
@@ -506,6 +524,8 @@ export function renderVariant({ route, lang, source }) {
     html = applyDictionary(html, { lookup });
     html = translateScriptStrings(html, { lookup, problems });
   }
+
+  if (route.indexable) html = practiceClause(html, company.practiceClause[lang], problems);
 
   // Last, so every edit above still sees the document as it was authored. What
   // the guards refuse has to be searched for in the chrome as well as the HTML:

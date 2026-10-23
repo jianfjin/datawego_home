@@ -41,13 +41,14 @@ import {
   ROOT_LANG,
   X_DEFAULT_LANG,
   alternateLinks,
+  indexablePageRoutes,
   isVariantBearing,
   routeByKey,
   sitemapUrls,
   urlOf,
 } from "../src/site/routes.mjs";
 import { makeLookup, readDictionary } from "../src/site/dictionary.mjs";
-import { applyDictionary, encodeText } from "../src/site/markup.mjs";
+import { applyDictionary, decodeEntities, encodeText, norm } from "../src/site/markup.mjs";
 import { isLedgered } from "../src/site/untranslated.mjs";
 import {
   CHROME_TOKENS,
@@ -174,11 +175,21 @@ test("the Dutch variant leaves no English prose behind", () => {
   );
 });
 
-test("the English variant is the source's own words, unchanged", () => {
+test("the English variant is the source's own words, plus the one sentence the register lends it", () => {
   // The other half of R1, and the half a translator breaks by accident: an edit
   // keyed on text rather than position can reach into the English variant too.
+  //
+  // Stage 2 adds exactly one permitted exception, and naming it is the point: the
+  // sole-practice clause is not page copy but a claim about the company, placed by
+  // the generator on every indexable Page in both variants (R12, ADR 0012). A test
+  // that allowed "a few added strings" would allow any edit that reaches into the
+  // English page, which is the failure this assertion exists to catch.
   const shown = new Set(visibleStrings(variant("en").html).map((record) => record.key));
-  assert.deepEqual([...shown].filter((key) => !SOURCE_STRINGS.has(key)), [], "the English variant invented a string");
+  assert.deepEqual(
+    [...shown].filter((key) => !SOURCE_STRINGS.has(key)),
+    [company.practiceClause.en],
+    "the English variant invented a string beyond the sole-practice clause",
+  );
   assert.deepEqual([...SOURCE_STRINGS].filter((key) => !shown.has(key)), [], "the English variant lost a string");
 });
 
@@ -352,9 +363,9 @@ test("no variant is the source file, and the source is not what deploys", () => 
 // ── the build refuses ───────────────────────────────────────────────────────
 
 test("a visible string that loses its Dutch key fails the build", () => {
-  const out = renderWith("nl", (source) => source.replace('    "Capabilities": "Wat we doen",\n', ""));
+  const out = renderWith("nl", (source) => source.replace('    "Data platforms": "Dataplatforms",\n', ""));
   assert.ok(
-    out.problems.some((problem) => problem.includes('no Dutch for "Capabilities"')),
+    out.problems.some((problem) => problem.includes('no Dutch for "Data platforms"')),
     `expected a missing-key refusal, got:\n  - ${out.problems.join("\n  - ")}`,
   );
 });
@@ -362,7 +373,7 @@ test("a visible string that loses its Dutch key fails the build", () => {
 test("the failure is Dutch-only: the English variant still renders", () => {
   // R15 is a promise about the Dutch address, not a reason the English one
   // cannot be built while the copy is being fixed.
-  const out = renderWith("en", (source) => source.replace('    "Capabilities": "Wat we doen",\n', ""));
+  const out = renderWith("en", (source) => source.replace('    "Data platforms": "Dataplatforms",\n', ""));
   assert.deepEqual(out.problems, []);
 });
 
@@ -582,7 +593,7 @@ test("sitemap.xml is the route table, and nothing else", () => {
 
   const locs = [...contents.matchAll(/<loc>([^<]*)<\/loc>/g)].map((match) => match[1]);
   assert.deepEqual(locs, sitemapUrls(), "the sitemap and the route table are the same list, or they are two lists");
-  assert.equal(locs.length, 2, "Stage 1 ships two addresses (ADR 0002); Stage 2 raises this to ten with its copy");
+  assert.equal(locs.length, 10, "five surfaces, two variants (ADR 0002)");
 
   // R3/R4, in the shape this suite can check without a network: the two places
   // that name an address agree, and the third is the one that cannot be
@@ -706,10 +717,15 @@ test("an address maps to a file the way Pages expects to find it", () => {
   assert.equal(distPath(diagram, "nl"), path.join("docs", "pharm-platform.html"));
 });
 
-test("today's build is two pages, four diagrams, the chrome, the routing map, the images, and four files that are not pages", () => {
+test("today's build is ten page documents, four diagrams, the chrome, the routing map, the images, and four files that are not pages", () => {
   const { files } = generate();
   const pages = [...files.keys()].filter((name) => name.endsWith("index.html")).sort();
-  assert.deepEqual(pages, ["en/index.html", "index.html"], "Stage 1 ships two addresses and no more");
+  assert.deepEqual(
+    pages,
+    ROUTES.filter((r) => r.kind === "page" && r.status === "live").flatMap((r) => LANGS.map((lang) => distPath(r, lang))).sort(),
+    "Stage 2 ships ten addresses, all of them the table's, and no more",
+  );
+  assert.equal(pages.length, 10, "five surfaces, two variants (ADR 0002)");
   assert.ok(files.has("_routes.json"), "without it the contact API stops being a Function");
   assert.match(files.get("_routes.json"), /"\/api\/\*"/);
 
@@ -793,8 +809,8 @@ test("today's build is two pages, four diagrams, the chrome, the routing map, th
   }
   assert.equal(
     files.size,
-    23,
-    "two pages, four diagrams, three chrome files, nine artwork files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
+    31,
+    "ten page documents, four diagrams, three chrome files, nine artwork files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
   );
   for (const name of artwork) {
     const logical = name.replace(/\.[0-9a-f]{12}\./, ".").replace("assets/", "resources/");
@@ -807,25 +823,42 @@ test("a route that goes live without copy stops the build rather than shipping a
   // R16: a page ships with its words or does not ship. `pageSourceFor` is the
   // gate, and it is loud on purpose — the quiet alternative is an empty Dutch
   // practice area arriving in a search result, which is worse than no page.
-  assert.equal(pageSourceFor(routeByKey.get("home")), "datawego-company-site.html");
-  assert.throws(
-    () => pageSourceFor(routeByKey.get("dataplatforms")),
-    /no Page source is registered.*ships with its words or does not ship/s,
-  );
-  for (const [key, file] of Object.entries(PAGE_SOURCES)) {
-    assert.ok(fs.existsSync(new URL(`../${file}`, import.meta.url)), `the source registered for ${key} does not exist`);
-    assert.equal(routeByKey.get(key).status, "live", `${key} has a source but is not live: the table and the build disagree`);
+  assert.equal(pageSourceFor(home), PAGE_SOURCES.home);
+  assert.equal(pageSourceFor({ key: "dataplatforms-nobody-wrote" }), null, "a route with no file is a guess waiting to be written");
+
+  // Home is one whole document; the other four Pages are bodies, and each must
+  // exist, be non-empty, and be the only thing that makes its route live.
+  for (const route of ROUTES.filter((r) => r.kind === "page" && r.status === "live")) {
+    const file = pageSourceFor(route);
+    assert.ok(file, `${route.key}: declared live with no Page source (R16)`);
+    const bytes = fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+    assert.ok(bytes.trim().length > 200, `${route.key}: its source is ${bytes.length} bytes, which is a placeholder wearing a filename`);
+    if (route.key !== "home") {
+      assert.ok(!/<html|<head|<footer|<main/.test(bytes), `${route.key}: a body carries document parts — that is the chrome's job (ADR 0004)`);
+      assert.match(bytes, /\{\{PAGE_NAME\}\}/, `${route.key}: the body typed its own name instead of asking the table for it`);
+    }
   }
 
-  const planned = ROUTES.filter((route) => route.status === "planned");
-  assert.equal(planned.length, 4, "Stage 2's four surfaces are declared and not yet live");
-  for (const route of planned) {
-    assert.ok(isVariantBearing(route) && route.indexable, `${route.key}: a planned surface must be an indexable Page`);
-    assert.ok(!Object.hasOwn(PAGE_SOURCES, route.key), `${route.key} is planned but already has a source`);
-    assert.ok(!urlOf(route.key, "nl").includes("/nl/"), `${route.key}: Dutch owns the root (ADR 0001)`);
-  }
+  assert.deepEqual(ROUTES.filter((route) => route.status === "planned"), [], "every declared surface is live; a route left dark would be an orphan with a plan");
 });
 
+test("a Page body says nothing the home Page has not already said", () => {
+  // U9's line is that the four new surfaces arrive with no new prose: what they
+  // state is what the site already stated about that Practice area or industry,
+  // moved out of the home Page's section list and into a page of its own. The
+  // dictionary proves the Dutch half of that — an unseen sentence would fail the
+  // build for having no key — so this is the English half, and it is the guard
+  // U10 walks past on purpose: when a page earns new copy, this test is the one
+  // that has to be told.
+  const said = new Set(visibleStrings(SOURCE).map((record) => record.key));
+  const { files } = generate();
+  for (const route of ROUTES.filter((r) => r.kind === "page" && r.status === "live")) {
+    const html = String(files.get(distPath(route, "en")));
+    const invented = [...new Set(visibleStrings(html).map((record) => record.key)
+      .filter((key) => /[a-z]/i.test(key) && !said.has(key) && key !== company.practiceClause.en))];
+    assert.deepEqual(invented, [], `${route.key}: Page copy the home Page never said`);
+  }
+});
 test("the company facts the head states are the register's", () => {
   // Nothing in a variant may state a company fact the register does not carry.
   assert.ok(variant("nl").html.includes(company.name));
@@ -848,6 +881,50 @@ test("the company facts the head states are the register's", () => {
   assert.ok(variant("nl").html.includes("Den Haag"), "the city is still stated, in Dutch, at the Dutch address");
 });
 
+// ── the words every Page shares, wherever they come from ────────────────────
+
+test("the sole-practice clause is on every indexable Page exactly once, and on no Diagram at all (R12)", () => {
+  // ADR 0012: the sentence is a claim about the company, not page copy, so the
+  // generator places it and no body may write it. Placed twice it argues with
+  // itself; placed never, the site says what it does not do. Both parse as HTML.
+  const { files } = generate();
+  const slot = /data-od-id="practice-clause">([^<]*)</g;
+
+  for (const route of indexablePageRoutes) {
+    for (const lang of LANGS) {
+      const html = String(files.get(distPath(route, lang)));
+      const placed = [...html.matchAll(slot)];
+      assert.equal(placed.length, 1, `${urlOf(route.key, lang)}: ${placed.length} clauses, and the register says one thing about the company`);
+      assert.equal(
+        decodeEntities(norm(placed[0][1])),
+        company.practiceClause[lang],
+        `${urlOf(route.key, lang)}: the clause is not the register's sentence, in this language`,
+      );
+    }
+  }
+
+  for (const route of ROUTES.filter((r) => r.kind === "diagram")) {
+    const html = String(files.get(distPath(route, "nl")));
+    assert.ok(!html.includes("practice-clause"), `${route.key}: an evidence page borrows a claim about the firm it is not standing for`);
+  }
+  assert.ok(!String(files.get("404.html")).includes("practice-clause"), "the page that is nobody's answer says what the company is anyway");
+});
+
+test("a Page's name is the route table's, and its Dutch is the dictionary's", () => {
+  // `navigation()` and `fillPageName` write the English name into the chrome and
+  // let the Dutch pass turn it, because a name stated in two files is a name
+  // that can be wrong in only one of them. So the table's Dutch name and the
+  // dictionary's answer for the English one have to be the same word, including
+  // when there is no answer, which is what a brand name is.
+  for (const route of ROUTES.filter(isVariantBearing)) {
+    const said = lookup(null, route.name.en);
+    assert.equal(
+      said ?? route.name.en,
+      route.name.nl,
+      `${route.key}: the table calls this Page one thing in Dutch and the dictionary another`,
+    );
+  }
+});
 test("the hero is asked for in widths, and the browser is the one that chooses", () => {
   const { files } = generate();
   const tag = /<img\b[^>]*\/>[\s\S]{0,40}?figcaption/.exec(String(files.get("index.html")));
@@ -1038,37 +1115,52 @@ function documentRequests(html) {
 test("every file a page asks for is a file this build wrote, from that page's own address", () => {
   const { files } = generate();
   const written = new Set(files.keys());
-  const addresses = new Set(
-    ROUTES.filter((route) => route.status === "live").flatMap((route) =>
-      isVariantBearing(route) ? LANGS.map((lang) => urlOf(route.key, lang)) : [urlOf(route.key, ROOT_LANG)],
-    ),
-  );
-  const origin = new URL(`${company.origin}`).origin;
-
+  // An address and the bytes it answers with, for the fragment check below. A
+  // Diagram is one address for both languages, and it is the drawing's own file,
+  // whose ids belong to archify rather than to this build.
+  const pages = new Map();
   for (const route of ROUTES.filter((entry) => entry.status === "live")) {
     for (const lang of isVariantBearing(route) ? LANGS : [ROOT_LANG]) {
-      const address = urlOf(route.key, lang);
-      const html = String(files.get(distPath(route, lang)));
-      for (const request of documentRequests(html)) {
-        const url = new URL(request, address);
-        // A script on someone else's host is not this build's to write, and a
-        // link out of the site is not either.
-        if (url.origin !== origin) continue;
-        const name = decodeURIComponent(url.pathname).replace(/^\//, "");
-        // The three ways Pages turns a path into a file, which are the three
-        // ways this build writes one: the name itself for anything in assets/,
-        // `index.html` inside a directory for a Page, and `<name>.html` for a
-        // Diagram, whose address lost its extension and whose file kept it.
-        const answerable =
-          written.has(name) || written.has(`${name.replace(/\/$/, "")}/index.html`) || written.has(`${name}.html`);
-        assert.ok(
-          addresses.has(url.href) || answerable,
-          `${address} asks for ${request}, which resolves to ${url.href}: no file this build writes answers there (ADR 0005)`,
-        );
-      }
+      pages.set(urlOf(route.key, lang), String(files.get(distPath(route, lang))));
     }
   }
-});
+  const addresses = new Set(pages.keys());
+  const origin = new URL(`${company.origin}`).origin;
+
+  for (const [address, html] of pages) {
+    for (const request of documentRequests(html)) {
+      const url = new URL(request, address);
+      // A script on someone else's host is not this build's to write, and a
+      // link out of the site is not either.
+      if (url.origin !== origin) continue;
+      const fragment = url.hash.slice(1);
+      url.hash = "";
+      if (fragment) {
+        const target = pages.get(url.href);
+        assert.ok(
+          target !== undefined,
+          `${address} links to ${request}, an address this build writes no page for`,
+        );
+        assert.ok(
+          new RegExp(`id="${fragment}"`).test(target),
+          `${address} links to ${request}, and the page at that address holds no section named ${fragment} — a browser scrolls nowhere and reports nothing`,
+        );
+        continue;
+      }
+      const name = decodeURIComponent(url.pathname).replace(/^\//, "");
+      // The three ways Pages turns a path into a file, which are the three
+      // ways this build writes one: the name itself for anything in assets/,
+      // `index.html` inside a directory for a Page, and `<name>.html` for a
+      // Diagram, whose address lost its extension and whose file kept it.
+      const answerable =
+        written.has(name) || written.has(`${name.replace(/\/$/, "")}/index.html`) || written.has(`${name}.html`);
+      assert.ok(
+        addresses.has(url.href) || answerable,
+        `${address} asks for ${request}, which resolves to ${url.href}: no file this build writes answers there (ADR 0005)`,
+      );
+    }
+  }
+  });
 
 test("the not-found page asks for nothing relative, because it answers at an address it cannot know", () => {
   const { files } = generate();

@@ -22,8 +22,8 @@ import assert from "node:assert/strict";
 
 import { generate, distPath } from "../build.mjs";
 import { company } from "../src/site/company.mjs";
-import { LANGS, ROUTES, routeByKey, urlOf } from "../src/site/routes.mjs";
-import { organizationNode, pageGraph, webSiteNode } from "../src/site/graph.mjs";
+import { LANGS, ROUTES, breadcrumbs, routeByKey, urlOf } from "../src/site/routes.mjs";
+import { breadcrumbNode, organizationNode, pageGraph, serviceNode, webSiteNode } from "../src/site/graph.mjs";
 
 const home = routeByKey.get("home");
 const livePages = ROUTES.filter((route) => route.kind === "page" && route.status === "live");
@@ -132,7 +132,7 @@ test("what ADR 0011 declined to say is absent, not empty", () => {
       });
       for (const node of graph["@graph"]) {
         assert.ok(
-          ["Organization", "WebSite", "WebPage"].includes(node["@type"]),
+          ["Organization", "WebSite", "WebPage", "Service", "BreadcrumbList"].includes(node["@type"]),
           `${name}: a ${node["@type"]} node — LocalBusiness and its family are the map pack's instrument (ADR 0011)`,
         );
         assert.ok(!JSON.stringify(node).includes("Person"), `${name}: a Person is the site naming somebody (ADR 0008)`);
@@ -177,9 +177,79 @@ test("a WebPage node's @id is the address its own page canonicals", () => {
       assert.equal(page.inLanguage, lang, `${at(route.key, lang)}: the graph's language is not the variant's`);
 
       const declared = new Set(graph["@graph"].map((node) => node["@id"]));
+      // The one pointer allowed to leave this document: ADR 0011 puts the Site
+      // node on the home Pages, so every other Page points at it rather than
+      // restating it. U9's service and trail are not exempt. They describe this
+      // address, so a reader that resolves the pointer must find the node here.
+      const elsewhere = new Set([webSiteNode()["@id"]]);
       for (const ref of [...JSON.stringify(graph).matchAll(/"@id": ?"([^"]+)"/g)].map((m) => m[1])) {
-        assert.ok(declared.has(ref), `${at(route.key, lang)}: ${ref} is pointed at and never described, so the pointer is all a reader gets`);
+        assert.ok(
+          declared.has(ref) || elsewhere.has(ref),
+          `${at(route.key, lang)}: ${ref} is pointed at and never described, so the pointer is all a reader gets`,
+        );
       }
+    }
+  }
+});
+
+test("a Practice area is something the firm sells, and an industry is somewhere it sells it (R11)", () => {
+  const { files } = built();
+  let services = 0;
+  for (const route of livePages) {
+    for (const lang of LANGS) {
+      const name = distPath(route, lang);
+      const nodes = new Map(nodesIn(String(files.get(name))).map((node) => [node["@type"], node]));
+      const service = nodes.get("Service");
+
+      if (!route.practice) {
+        assert.equal(service, undefined, `${at(route.key, lang)}: a Service on an industry Page sells the sector rather than the work`);
+        continue;
+      }
+      services += 1;
+      const canonical = urlOf(route.key, lang);
+      assert.equal(service["@id"], `${canonical}#service`, `${name}: the service is addressed somewhere other than this page`);
+      assert.equal(decode(service.name), decode(route.name[lang]), `${name}: the Service's name is not the route table's, in this language`);
+      assert.equal(service.url, canonical, `${name}: a service offered at an address other than the one describing it`);
+      assert.deepEqual(
+        service.provider,
+        { "@id": `${company.origin}/#organization` },
+        `${name}: a Service that restates the KvK number is the graph's second copy of a fact (ADR 0011)`,
+      );
+      assert.equal(service.areaServed, company.serviceAreaCountryCode, `${name}: the service area is not the register's`);
+      assert.deepEqual(nodes.get("WebPage").mainEntity, { "@id": service["@id"] }, `${name}: the page does not say which entity it is about`);
+      assert.deepEqual(service, serviceNode({ route, lang }), `${name}: not what graph.mjs would generate`);
+    }
+  }
+  assert.equal(services, 6, "three Practice areas, two variants - a fourth is a claim about a service nobody named");
+});
+
+test("every Page but the home one says what is above it, in its own language (R11)", () => {
+  const { files } = built();
+  for (const route of livePages) {
+    for (const lang of LANGS) {
+      const name = distPath(route, lang);
+      const nodes = new Map(nodesIn(String(files.get(name))).map((node) => [node["@type"], node]));
+      const trail = nodes.get("BreadcrumbList");
+
+      if (route.key === "home") {
+        assert.equal(trail, undefined, `${name}: a trail one crumb deep is the page pointing at itself`);
+        continue;
+      }
+
+      const crumbs = breadcrumbs(route.key, lang);
+      assert.deepEqual(trail, breadcrumbNode({ route, lang }), `${name}: not what the route table would generate`);
+      assert.equal(trail.itemListElement.length, 2, `${name}: the site is two levels deep, and a third crumb would be an invented page`);
+      assert.deepEqual(
+        trail.itemListElement.map((item) => [item.position, decode(item.name), item.item]),
+        crumbs.map((crumb, index) => [index + 1, crumb.name, crumb.href]),
+        `${name}: the graph's trail and the route table's are two different paths`,
+      );
+      assert.equal(
+        trail.itemListElement[trail.itemListElement.length - 1].item,
+        /rel="canonical" href="([^"]*)"/.exec(String(files.get(name)))[1],
+        `${name}: a trail that ends somewhere other than the page standing on it`,
+      );
+      assert.deepEqual(nodes.get("WebPage").breadcrumb, { "@id": trail["@id"] }, `${name}: the page does not point at its own trail`);
     }
   }
 });

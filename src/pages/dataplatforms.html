@@ -1,0 +1,47 @@
+<!--
+  The Data platforms Page body (ADR 0002: one indexable surface per Practice area).
+
+  A Page source is a body, not a document: the chrome — head, navigation, footer,
+  behaviour — arrives from the home Page source at build time, so the five Pages
+  share it the way ADR 0004 shares the CSS and the script, and a nav change is one
+  edit rather than five. What is written here is only what is true of this kind of
+  work and not of the others.
+
+  Two rules, both enforced:
+
+  - `{{PAGE_NAME}}` is the heading, filled from the route table. A body that
+    typed the page's own name would be a second statement of it, and the
+    dictionary's Dutch for the same words a third;
+  - every sentence below is one the site already says, because U9 ships
+    structure and U10 ships words (R16). No prose is invented in this file.
+-->
+<section class="section" id="top" data-od-id="page-head">
+  <div class="container stack" style="gap: var(--space-6);">
+    <p class="eyebrow">Practice areas</p>
+    <h1 class="display">{{PAGE_NAME}}</h1>
+    <p class="lead" style="max-width: 68ch;">Modern lakehouse and warehouse architectures that unify clinical, operational and product data — modelled for analysts and for machines, not just dashboards.</p>
+    <ul>
+      <li>Ingestion, integration &amp; orchestration</li>
+      <li>Medallion modelling and semantic layers</li>
+      <li>Batch, streaming and CDC pipelines</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="proof" data-od-id="page-proof">
+  <div class="container stack" style="gap: var(--space-6);">
+    <h2 class="h2">Proof of work in each area.</h2>
+    <div class="grid-2" style="margin-top: var(--space-6);">
+      <div class="feature card" data-od-id="page-case-pharm">
+        <h3 class="h3" style="margin-top: var(--space-2);">Pharm Platform</h3>
+        <p>An open-data intelligence platform for pharmacy. A phased build takes ingestion of Eurostat, CTIS and ChEMBL through canonical drug identity to analytics-ready models, forecasting and a knowledge-graph decision gate — with no patient-level data anywhere in the pipeline.</p>
+        <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-pharm-platform}}" target="_blank" rel="noopener">View architecture</a></p>
+      </div>
+      <div class="feature card" data-od-id="page-case-etl">
+        <h3 class="h3" style="margin-top: var(--space-2);">EHR ETL Pipeline</h3>
+        <p>A deterministic mapping pre-pass and Dagster-orchestrated conversion turn non-compliant raw EHR (Electronic Health Record) extracts into governed FHIR R4 and OMOP CDM outputs. Each layer lands as an atomic DuckLake Parquet snapshot and advances independently, so a degraded run never discards healthy data.</p>
+        <p style="margin-top: var(--space-5);"><a class="link-inline btn-arrow" href="{{LINK:diagram-ehr-etl-pipeline}}" target="_blank" rel="noopener">View architecture</a></p>
+      </div>
+    </div>
+  </div>
+</section>

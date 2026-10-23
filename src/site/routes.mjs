@@ -7,7 +7,7 @@
  * canonical and sitemap name an address that Cloudflare Pages 308s somewhere
  * else. Nothing else in the repository writes a path.
  *
- * Three shapes per route, each one a decision already taken elsewhere:
+ * Four shapes per route, each one a decision already taken elsewhere:
  *
  * - `kind: "page"` is a Language-variant-bearing surface with two paths
  *   (ADR 0001); `kind: "diagram"` is one address, no variants, no `hreflang`,
@@ -17,7 +17,11 @@
  *   route is declared so its address and its two display names stop being
  *   invented later — and it must appear in no link, no sitemap and no alternate
  *   set until it goes live, because a half-emitted mirror is an invalid
- *   `hreflang` set rather than a smaller site.
+ *   `hreflang` set rather than a smaller site. Nothing is dark today: Stage 2
+ *   took the four remaining surfaces live, which is what `seo-routes.test.mjs`
+ *   holds the table to.
+ * - `practice: true` is a Practice area rather than an industry, which is the
+ *   difference `Service` in the graph is drawn along (R11, ADR 0011).
  *
  * Paths are the address Cloudflare Pages answers with 200, and nothing else
  * (ADR 0005). A Page is a directory: trailing slash, no extension. A Diagram
@@ -37,6 +41,14 @@ export const ROOT_LANG = "nl";
 /** English is the fallback nobody is steered into by a language sniff (ADR 0006). */
 export const X_DEFAULT_LANG = "en";
 
+/**
+ * A Practice area is something the firm sells as a service; an industry is a
+ * place it is sold in. R11 puts a `Service` node on the former and not the
+ * latter, and the distinction belongs in this table for the same reason the
+ * addresses do: a second list of which Pages are which is a second thing that
+ * can be wrong, and it is the only way the graph can say it without typing the
+ * page's name into a generator.
+ */
 export const ROUTES = Object.freeze([
   {
     key: "home",
@@ -57,7 +69,8 @@ export const ROUTES = Object.freeze([
     kind: "page",
     form: "directory",
     indexable: true,
-    status: "planned", // live at Stage 2, with its copy (U9/U10)
+    status: "live",
+    practice: true,
     path: { nl: "/dataplatforms/", en: "/en/data-platforms/" },
     name: { nl: "Dataplatforms", en: "Data platforms" },
   },
@@ -66,7 +79,8 @@ export const ROUTES = Object.freeze([
     kind: "page",
     form: "directory",
     indexable: true,
-    status: "planned",
+    status: "live",
+    practice: true,
     path: { nl: "/ai-oplossingen/", en: "/en/ai-solutions/" },
     name: { nl: "AI-oplossingen", en: "AI-powered solutions" },
   },
@@ -75,7 +89,8 @@ export const ROUTES = Object.freeze([
     kind: "page",
     form: "directory",
     indexable: true,
-    status: "planned",
+    status: "live",
+    practice: true,
     path: {
       nl: "/cloud-en-enterprise-software/",
       en: "/en/cloud-and-enterprise-software/",
@@ -87,7 +102,7 @@ export const ROUTES = Object.freeze([
     kind: "page",
     form: "directory",
     indexable: true,
-    status: "planned",
+    status: "live",
     path: {
       nl: "/zorg-en-life-sciences/",
       en: "/en/healthcare-life-sciences/",

@@ -19,7 +19,8 @@ import { fileURLToPath } from "node:url";
 
 import { company } from "./src/site/company.mjs";
 import { LANGS, ROUTES, ROOT_LANG, assertRoutes, isVariantBearing, urlOf } from "./src/site/routes.mjs";
-import { CHROME_TOKENS, leakedRouteLinks, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
+import { CHROME_TOKENS, PAGE_SOURCES, leakedRouteLinks, renderVariant, sourceProblems, themeBoot } from "./src/site/page.mjs";
+import { PAGE_BODIES } from "./src/site/pages.mjs";
 import { staticAssets } from "./src/site/static.mjs";
 import { applyDiagramHead } from "./src/site/diagrams.mjs";
 
@@ -89,9 +90,16 @@ function generate() {
 
     if (isVariantBearing(route)) {
       const sourceFile = pageSourceFor(route);
+      if (sourceFile === null) {
+        problems.push(`${route.key}: declared live with no Page source. A body page needs its own file (R16)`);
+        continue;
+      }
       const source = read(sourceFile);
+      // The chrome is read, never copied: five Pages share one header because one
+      // file holds it, and reading it per route keeps `--check` honest about that.
+      const chromeSource = sourceFile === PAGE_SOURCES.home ? null : read(PAGE_SOURCES.home);
       for (const lang of LANGS) {
-        const out = renderVariant({ route, lang, source });
+        const out = renderVariant({ route, lang, source, chromeSource });
         if (out.problems.length) {
           problems.push(`${route.key}.${lang}:\n    - ${out.problems.join("\n    - ")}`);
           continue;
@@ -187,12 +195,17 @@ function sharedStylesheet(files, problems) {
   return `/${sheets[0]}`;
 }
 
-/** The authored source behind a route. One per Page for now; U9 adds the others. */
+/**
+ * The authored source behind a route.
+ *
+ * Home is the whole document; the other four Pages are bodies composed onto it
+ * (`src/site/pages.mjs`), and a live Page route that names no file is a build
+ * failure rather than an empty page: its copy is what is missing, not its path,
+ * and a page ships with its words or does not ship (R16).
+ */
 function pageSourceFor(route) {
-  if (route.key === "home") return "datawego-company-site.html";
-  throw new Error(
-    `no Page source is registered for ${route.key}. Its copy is what is missing, not its path — a page ships with its words or does not ship (R16).`,
-  );
+  if (route.key === "home") return PAGE_SOURCES.home;
+  return PAGE_BODIES[route.key] ?? null;
 }
 
 function read(relative) {
@@ -373,4 +386,4 @@ const bytesOf = (text) => Buffer.byteLength(text);
 const fmt = (n) => (n > 1024 ? `${(n / 1024).toFixed(1)}KB` : `${n}B`);
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
-export { generate, distPath, pageSourceFor, shipAssets };
+export { generate, distPath, pageSourceFor, shipAssets, addressesWritten };

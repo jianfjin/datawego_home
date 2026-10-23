@@ -626,11 +626,10 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
   <div class="container topnav-inner">
     <a class="logo" href="#top" data-od-id="nav-logo" aria-label="DataWeGo home"><b>Data</b><i>WeGo</i></a>
     <nav id="primary-nav" aria-label="Primary">
-      <a href="#about" data-nav="about">Company</a>
-      <a href="#capabilities" data-nav="capabilities">Capabilities</a>
-      <a href="#lifecycle" data-nav="lifecycle">Platform</a>
-      <a href="#industries" data-nav="industries">Industries</a>
-      <a href="#approach" data-nav="approach">Approach</a>
+      <a href="{{LINK:dataplatforms}}" data-nav="dataplatforms">Data platforms</a>
+      <a href="{{LINK:ai-oplossingen}}" data-nav="ai-oplossingen">AI-powered solutions</a>
+      <a href="{{LINK:cloud-en-enterprise-software}}" data-nav="cloud-en-enterprise-software">Cloud &amp; enterprise software</a>
+      <a href="{{LINK:zorg-en-life-sciences}}" data-nav="zorg-en-life-sciences">Healthcare &amp; life sciences</a>
       <a class="nav-contact" href="#contact">Talk to an engineer</a>
     </nav>
     <div class="nav-actions">
@@ -1095,6 +1094,7 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
       </div>
       <div class="stack" style="gap: var(--space-6);">
         <p class="lead">Tell us the systems involved and the decision you are trying to improve. We reply with a point of view, the nearest comparable build, and what a first phase would cost in time.</p>
+        <p class="body-muted" data-od-id="practice-clause"></p>
       </div>
 
       <form class="card" id="brief-form" novalidate data-od-id="contact-form" aria-label="Project enquiry">
@@ -1253,9 +1253,6 @@ body, header, section, footer, .banner, .chip, .arch-node, .card,
     "Primary": "Primaire navigatie",
     "Language": "Taal",
     "Company": "Bedrijf",
-    "Capabilities": "Wat we doen",
-    "Industries": "Sectoren",
-    "Approach": "Aanpak",
     "Talk to an engineer": "Praat met een engineer",
     "Switch to dark theme": "Wissel naar donkere modus",
     "Switch to light theme": "Wissel naar lichte modus",

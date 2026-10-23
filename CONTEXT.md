@@ -1,10 +1,11 @@
 # DataWeGo Company Website
 
 The public site for a Dutch data engineering & AI consultancy, deployed to
-Cloudflare Pages at www.datawego.nl (ADR 0006). It is authored as one Page
-source in English with its Dutch dictionary inside it, and `build.mjs` generates
-the Dutch and English variants into `dist/`, so what is served answers in its own
-language without running anything (ADR 0001, ADR 0003).
+Cloudflare Pages at www.datawego.nl (ADR 0006). It is authored in English as one
+whole document plus four Bodies, the document holding the site's one Dutch
+dictionary, and `build.mjs` generates the Dutch and English variants into
+`dist/`, so what is served answers in its own language without running anything
+(ADR 0001, ADR 0003).
 
 ## Language
 
@@ -67,8 +68,12 @@ One of the two renderings of the same Page — Dutch and English. A Page has exa
 _Avoid_: translation (the words differ; a variant that says something the other does not is a different Page, not a variant)
 
 **Page source**:
-The one authored file a Page is generated from — its English markup and that Page's Dutch entries. A site of five Pages has five Page sources and ten generated files.
+The one authored file a Page is generated from — its English markup and that Page's Dutch entries. A site of five Pages has five Page sources and ten generated files, and the sources come in two shapes: the home Page's is a whole document, which doubles as the Chrome the rest are composed onto, and the other four are Bodies.
 _Avoid_: template, master file (the source is not a shell waiting for data; it is the Page, written once)
+
+**Body**:
+A Page source written as sections and nothing else — no head, no navigation, no footer — because the Chrome arrives from the home Page source when the build composes the two. A Body is what a Page is once some other file carries what every Page has in common. It lives at `src/pages/<route key>.html`, and its address still belongs to the route table rather than to its own file name.
+_Avoid_: fragment, partial (both say what is missing rather than what is here), snippet, template (a template waits for data; a Body is the whole of what this Page says beyond the Chrome)
 
 **Not-found page**:
 What an unknown address is answered with: one Dutch page, `noindex, follow`, with
@@ -102,7 +107,7 @@ deliberately not indexed.
 _Avoid_: blocking (which of the two it blocks is the whole question), hiding
 
 **Chrome**:
-What every Page has in common — navigation, footer, styling, behavior. Chrome is reached by a shared address rather than repeated per Page, so one visit pays for it once.
+What every Page has in common — navigation, footer, styling, behavior. Chrome is reached rather than repeated, so one visit pays for it once: the styling and the behavior by a shared address (ADR 0004), and the HTML around them by composition out of the home Page source (ADR 0013). Its navigation is the route table's, which is what makes a new Page a row and an edit rather than a fifth copy of a header.
 _Avoid_: shell, layout, template, self-contained file (that is how the prototype shipped, not a part of a Page)
 
 **Practice-area page**:

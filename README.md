@@ -7,19 +7,29 @@ healthcare, life sciences and enterprise innovation
 
 ## Quick start
 
-The site is authored as one HTML file and built from it: `node build.mjs`
+The site is authored in one HTML file and built from it: `node build.mjs`
 generates the language variants into `dist/`, and `node build.mjs --check` proves
-`dist/` still says what the source says. A generated page links its stylesheet and
-its behaviour as shared files rather than carrying them inline, so it is the
-authored file that stays self-contained. The contact form is the single part that
-needs a server: it posts to a Cloudflare Pages Function in `functions/`, and a
-page opened straight from disk has no origin for that request to come from.
+`dist/` still says what the source says. That file is the home Page, and it is
+also the chrome — its head, header, closing ask and footer are lifted into the
+four other Pages, which are authored as Bodies (sections only) under `src/pages/`
+(ADR 0013). A generated page links its stylesheet and its behaviour as shared
+files rather than carrying them inline, so it is the authored file that stays
+self-contained. The contact form is the single part that needs a server: it posts
+to a Cloudflare Pages Function in `functions/`, and a page opened straight from
+disk has no origin for that request to come from.
 
-- **Read the page:** `python -m http.server 8000`, then
-  `http://localhost:8000/datawego-company-site.html`. That is the authored file,
-  which is also what a reader opens to see the design; everything works except
-  sending, which the page says so about. To see what ships, build and serve
-  `dist/`.
+- **Read the design:** `python3 -m http.server 8000`, then
+  `http://localhost:8000/datawego-company-site.html`. Every colour, spacing and
+  interaction is in that one file, and it is the file a person edits by hand.
+  What is *not* there are the addresses: the eight links the route table owns
+  (the four navigation links and the four Diagram links) are written as
+  `{{LINK:…}}` tokens, so on this page they go nowhere until the build fills
+  them. Sending is the other thing that cannot work from disk, which the page
+  says so about.
+- **Read the site:** `node build.mjs && cd dist && python3 -m http.server 8000`,
+  then `http://localhost:8000/`. `/en/`, `/dataplatforms/` and the rest are the
+  other nine addresses, all answered, because Pages' directory index is what the
+  route table's trailing slash means on disk.
 - **Work on sending:**
 
   ```sh
@@ -39,15 +49,22 @@ page opened straight from disk has no origin for that request to come from.
 ## Project structure
 
 ```
-├── datawego-company-site.html   # the Page source: markup, tokens, styles, scripts, NL dictionary
+├── datawego-company-site.html   # the home Page source *and* the chrome: markup, styles, scripts, NL dictionary
 ├── build.mjs                    # the only writer of dist/; --check proves dist/ is current
 ├── src/                         # the generator's input, all of it
 │   ├── robots.txt               #   the crawler-facing stance, authored rather than inherited (ADR 0007)
 │   ├── 404.nl.html              #   the page behind an unknown address, in Dutch (R7)
+│   ├── pages/                   #   the other four Pages, as Bodies: sections, no chrome (ADR 0013)
+│   │   ├── dataplatforms.html
+│   │   ├── ai-oplossingen.html
+│   │   ├── cloud-en-enterprise-software.html
+│   │   └── zorg-en-life-sciences.html
 │   └── site/                    # what the generator reads, and what it is not allowed to invent
 │       ├── routes.mjs           #   every address, declared once (ADR 0005)
 │       ├── company.mjs          #   every company fact, declared once (ADR 0011)
 │       ├── page.mjs             #   one source in, one address out: retirement, translation, chrome
+│       ├── chrome.mjs           #   the home document edited into every other Page, by anchor (ADR 0013)
+│       ├── pages.mjs            #   which Body is which Page's, and the sentence each one's is about
 │       ├── static.mjs           #   the four files that are not pages, derived from the two above
 │       ├── diagrams.mjs         #   the Diagram pages' titles and descriptions, which archify would overwrite
 │       ├── graph.mjs            #   the structured data, every value read out of the modules above
@@ -64,6 +81,8 @@ page opened straight from disk has no origin for that request to come from.
 ├── dist/                        # what actually gets uploaded — generated, never edited
 │   ├── index.html               #   the Dutch address: the root is Dutch (ADR 0001)
 │   ├── en/index.html            #   the English one
+│   ├── <key>/index.html         #   the four new Pages, Dutch at the address the table declares
+│   ├── en/<slug>/index.html     #   …and their English variants, English slugs and all
 │   ├── robots.txt               #   the stance above, plus the Sitemap: line only the build knows
 │   ├── sitemap.xml              #   every live indexable variant, read off the route table (R6)
 │   ├── 404.html                 #   so an unknown address is a 404 in Dutch, not the homepage (R7)
@@ -90,7 +109,7 @@ page opened straight from disk has no origin for that request to come from.
     ├── etl-dataflow-with-prepass.html
     ├── marketing-research-swarm.html
     ├── ehr-platform-architecture-with-prepass.html
-    ├── adr/                     #   the decisions, one file each (0001-0012)
+    ├── adr/                     #   the decisions, one file each (0001-0013)
     ├── plans/                   #   the plans those decisions were taken in
     ├── DESIGN-HANDOFF.md        #   implementation contract (fidelity, responsive matrix)
     └── DESIGN-MANIFEST.json     #   machine-readable map of screens, tokens, interactions
@@ -196,6 +215,20 @@ because that is a page claiming it was edited today; and no street, so the graph
 cannot disagree with the page or with a Profile that does not exist.
 `tests/seo-graph.test.mjs` walks the emitted JSON and refuses any of those keys for
 appearing at all rather than for being empty — `"telephone": null` is a sentence.
+
+**Five Pages, one header.** The home document is composed rather than copied
+(ADR 0013): `src/site/chrome.mjs` lifts its head, closing ask and footer into the
+four Bodies verbatim, replaces its `<main>`'s sections with the Body's own, and
+rewrites the navigation from the route table. Composition is anchored to strings
+the document has to contain anyway — `<main id="content">`, the section-9 comment,
+`<nav id="primary-nav">` — and an anchor that has moved, or gone, or appeared
+twice fails the build by name rather than shipping a page whose contact form was
+eaten (R15). Two things a person editing the prototype should know. Deleting the
+home Page's contact section deletes the edge of every other Page's chrome. And a
+link to `#industries` in a Body becomes `/…#industries`, because with five Pages
+that anchor means the sixth section of *whichever page you are standing on*, and a
+browser scrolls to an absent `id` without telling anyone (R7's failure shape in a
+form no status code reveals).
 
 **Who owns a Diagram page.** The four files under `docs/` are archify's export,
 and re-exporting a drawing rewrites the whole document. So the build hands the
