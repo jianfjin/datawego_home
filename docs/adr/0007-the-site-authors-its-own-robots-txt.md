@@ -27,3 +27,16 @@ substitutes for the other.
 
 Consequence: the zone's Content-Signals managed-robots injection has to be turned
 off, or the two files concatenate into the 119KB response this replaces.
+
+The consequence turned out to have a second half, and it is the half that matters.
+Cloudflare runs that injection in `Append` mode, which does concatenate the two files
+but also keeps most of what it says: our `dist/robots.txt` ships intact behind it, the
+response reads 3,287 bytes rather than 119KB, every check that only asks whether
+`Googlebot` may crawl passes, and the row on the dashboard looks like a tidying task.
+It is not. The injected block carries its own `User-agent: GoogleOther` group with
+`Disallow: /`, seventy-four lines ahead of this repository's line that welcomes the same
+crawler, and a crawler that merges the groups matching it takes the restrictive rule.
+So the sentence of this decision that says `GoogleOther` unblocked was false on the live
+site the whole time the file stating it was being served correctly.
+`Append` is the setting to change, not the file: `None`, or `Overwrite` if the signals
+themselves are wanted. Verified on `https://www.datawego.nl/robots.txt`, 2026-10-24.

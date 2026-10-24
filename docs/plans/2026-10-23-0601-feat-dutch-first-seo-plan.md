@@ -386,7 +386,9 @@ and nothing more. Two were authored at 700 and 699, so those two cross R16's cei
 — 702 and 701 — while passing the guard in the repository. R16 is a budget about what a visitor
 reads, so the copy is not what is wrong here; but it is why ⑥ is now the most expensive row on this
 list, and it stays expensive for as long as any Page sits within two words of 700. Turning it off
-is the whole fix, and it makes R2's claim about the address true again in the same motion.
+is the whole fix. The sentence this note originally closed with cited R2 and ADR 0011 for what
+that fixes, and both citations were wrong; the corrected claim is in the note below, and so is
+the check that could never have proved it.
 
 Running the contract caught a flaw in the contract a second time: an asset walk written as
 `grep -o '/assets/[A-Za-z0-9._-]*'` finds `/assets/template.html` inside the header comment and
@@ -395,15 +397,43 @@ that string, and `template.html` is genuinely absent from `dist/assets/` — but
 same one R19's `64w,` taught: a mechanical check that reads the document rather than its attributes
 will eventually assert about a comment.
 
+**Made 2026-10-24, at the deploy that fixed three Dutch word-forms:** `95f2c7b`, shipped as
+`cae3e568`. It moved no word: `677 / 669 / 665 / 636` in Dutch and `697 / 700 / 699 / 651` in
+English, the same figures as the note above, and a served Page differs from the file the build
+wrote in three places — two rewritten anchors and one injected script — 424 lines against 424.
+Reading those bytes again found two things the rows below now say better.
+
+**② is not a size problem.** Split at the line where our file begins, and parse the response as
+groups rather than as `grep` output — the lesson this contract has now been taught a third time —
+the injected block and ours disagree in exactly one place: a `GoogleOther` group at line 77 that
+refuses it at line 78, and ours at line 151 that welcomes it at 152. Six of the seven crawlers we
+refuse are refused by the injected block too; `FacebookBot` is the seventh, unnamed there, which
+costs nothing. Neither file names `Googlebot` at all, so the `User-agent: *` / `Allow: /` both of
+them carry governs it, and nothing here threatens the Dutch index. What it threatens is the
+AI-answer channel ADR 0007 opened on purpose, because a crawler that merges the groups that match
+it takes the restrictive rule and never reaches our line. So row ② is not finished at 611 bytes;
+it is finished when no `GoogleOther` group in the response says `Disallow`.
+
+**⑥ costs something smaller than the note above claims, and adds a request.** Both anchors become
+`/cdn-cgi/l/email-protection#…` and their link text becomes `[email&#160;protected]`, so on the
+served Page `grep -c 'mailto:info@datawego.nl'` answers 0 where `dist/` holds 2 — that is the
+assertion under R1/R2 that this feature breaks, and it is the only one. The graph's `"email"` is
+left alone, as the earlier note already said, so a crawler running no JavaScript still finds the
+address; what loses it is a visitor, who can neither read it, copy it, nor tap it. It also ships
+`email-decode.min.js`, 1,239 B no build wrote. And the check written into row ⑥ to prove all of
+this searched for `[email protected]` with a space, which the bytes never contained: it answered
+0 with the row open and would answer 0 with the row closed, and so proved nothing. Replaced below
+with the `&#160;` form, which answers 2 today.
+
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 
 | # | Where | Do | Verified by |
 |---|---|---|---|
 | ① | Cloudflare Pages → datawego → Settings → Domains, on the `datawego.nl` row | apex→www redirect ON. `docs/datawego.nl.txt` shows both `datawego.nl` and `www.datawego.nl` already CNAME to `datawego.pages.dev`, so **no DNS record changes**: this is the Pages toggle, and if it is absent on this plan a zone Redirect Rule does the same job | `curl -sI https://datawego.nl/ \| grep -i '^location'` → `https://www.datawego.nl/` |
-| ② | Cloudflare zone → bot/Content-Signals managed robots | **disable** the managed robots.txt injection | `robots.txt` size 611 B, `Content-Signal` gone |
+| ② | Cloudflare zone → Settings → Crawl hints → Content signals (managed robots.txt) | **`None`** — or `Overwrite` if the signals themselves must stay. Today it runs as `Append`: 130 injected lines in front of our intact 25, which is why the size reads 3,287 B, and one of those lines refuses `GoogleOther` that ADR 0007 exists to welcome | `curl -s $W/robots.txt \| wc -c` → 611 and `Content-Signal` gone, **and** `curl -s $W/robots.txt \| awk '/^User-agent: GoogleOther$/{getline; if ($0 ~ /^Disallow/) print "still refused at line " NR}'` → empty (today it prints `still refused at line 78`) |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
 | ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem | it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
-| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off**. It rewrites both `mailto:info@datawego.nl` into `/cdn-cgi/l/email-protection#…` and injects `email-decode.min.js`, so R2's claim that the address is in the HTML rather than after a script runs is false as served — and a retrieval crawler that does not run JavaScript never sees the contact route at all. Off is also what ADR 0011's "the address, in the bytes" intent asks for. **Since U10 it also decides a word count**: the rewrite turns one visible word into two, twice per Page, so a variant authored at 700 serves 702 (R16). | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2, and `curl -s $W/dataplatforms/ \| grep -c '\[email protected\]'` → 0 (it is 2 while this row is open) | 
+| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off.** It rewrites both `mailto:info@datawego.nl` anchors into `/cdn-cgi/l/email-protection#…` and their link text into `[email&#160;protected]`, so the address stops being readable, copyable or tappable for a visitor; that is the `mailto:` assertion under R1/R2 it breaks, and it is false as served. It is not a crawler problem — the graph's `"email"` survives untouched, because the feature rewrites anchors rather than JSON strings — and the earlier claim that a retrieval crawler never sees the contact route was too strong. It also injects `email-decode.min.js`, 1,239 B this build never wrote. **Since U10 it decides a word count as well**: one visible word becomes two, twice per Page, so a variant authored at 700 serves 702 (R16). | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2 and `curl -s $W/dataplatforms/ \| grep -c 'email&#160;protected'` → 0 (today they are 0 and 2) |
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
 
 ## Definition of Done
