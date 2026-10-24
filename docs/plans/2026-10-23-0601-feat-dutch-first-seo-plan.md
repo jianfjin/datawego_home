@@ -366,6 +366,35 @@ contract itself: R19's first form grepped to the closing quote, so a `srcset` ha
 URL and it reported `000` for a file nobody named. Fixed above. `dist/` still matches the source at
 23 files, 3,758.7 KB, and 102 tests pass.
 
+**Made 2026-10-24, at the U10 deploy:** the copy is live — `193feb3` shipped as `a273f6aa`, 31
+files and 3,942.9 KB, 109 tests, `dist/` matching the source. On the shipped bytes: 98 asset
+requests and every one 200, no request written as a bare name, Diagram links absolute (the four
+home points at, the two `dataplatforms` points at, the one `zorg` points at), every `#fragment` on
+all ten addresses resolving inside the document that carries it, canonicals self-refer with
+nl/en/x-default listed in the same order everywhere, and the graph reading Organization 1, WebSite
+on home alone, Service on the three kinds of work and not on the industry Page, BreadcrumbList on
+the four sub Pages, the clause once per Page, the nav four links from the table. The preview alias
+still answers `x-robots-tag: noindex`.
+
+The owner's three rows are unchanged since the last deploy — ① apex still 200, ② robots.txt still
+3,287 B, ⑥ still rewriting both addresses — and ⑥ picked up a consequence worth knowing before it
+is read as cosmetic. Email obfuscation rewrites the *link text* as well as the `href`, and
+`[email protected]` is two words where `info@datawego.nl` was one. A Page carries that address
+twice, so every variant ships two words heavier than the file the build wrote: `dataplatforms.nl`
+counts 679 served against 677 in `dist/`. For six of the eight variants that is a rounding error
+and nothing more. Two were authored at 700 and 699, so those two cross R16's ceiling as served
+— 702 and 701 — while passing the guard in the repository. R16 is a budget about what a visitor
+reads, so the copy is not what is wrong here; but it is why ⑥ is now the most expensive row on this
+list, and it stays expensive for as long as any Page sits within two words of 700. Turning it off
+is the whole fix, and it makes R2's claim about the address true again in the same motion.
+
+Running the contract caught a flaw in the contract a second time: an asset walk written as
+`grep -o '/assets/[A-Za-z0-9._-]*'` finds `/assets/template.html` inside the header comment and
+reports a 404 for a file no page asks for. The form above filters by extension, which cannot match
+that string, and `template.html` is genuinely absent from `dist/assets/` — but the lesson is the
+same one R19's `64w,` taught: a mechanical check that reads the document rather than its attributes
+will eventually assert about a comment.
+
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 
 | # | Where | Do | Verified by |
@@ -374,7 +403,7 @@ URL and it reported `000` for a file nobody named. Fixed above. `dist/` still ma
 | ② | Cloudflare zone → bot/Content-Signals managed robots | **disable** the managed robots.txt injection | `robots.txt` size 611 B, `Content-Signal` gone |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
 | ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem | it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
-| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off**. It rewrites both `mailto:info@datawego.nl` into `/cdn-cgi/l/email-protection#…` and injects `email-decode.min.js`, so R2's claim that the address is in the HTML rather than after a script runs is false as served — and a retrieval crawler that does not run JavaScript never sees the contact route at all. Off is also what ADR 0011's "the address, in the bytes" intent asks for | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2 | 
+| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off**. It rewrites both `mailto:info@datawego.nl` into `/cdn-cgi/l/email-protection#…` and injects `email-decode.min.js`, so R2's claim that the address is in the HTML rather than after a script runs is false as served — and a retrieval crawler that does not run JavaScript never sees the contact route at all. Off is also what ADR 0011's "the address, in the bytes" intent asks for. **Since U10 it also decides a word count**: the rewrite turns one visible word into two, twice per Page, so a variant authored at 700 serves 702 (R16). | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2, and `curl -s $W/dataplatforms/ \| grep -c '\[email protected\]'` → 0 (it is 2 while this row is open) | 
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
 
 ## Definition of Done
