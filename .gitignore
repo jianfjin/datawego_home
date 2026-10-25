@@ -47,3 +47,12 @@ docs/datawego.nl.txt
 resources/DataWeGo_banner2.png
 resources/datawego1.png
 resources/Developer_Desk_with_Erasmus_Bridge_View.png
+
+# ── Dashboard working material, never in git ─────────────────────────────
+# The screenshots record dashboard states no repository fact depends on; the two
+# favicon rasters are the owner's to delete, separately, as U5 left them.
+docs/cloudflare_security_screenshot1.png
+docs/cloudflare_rules_screenshot1.png
+docs/cloudflare_rule_screenshot2.png
+resources/favicon-96.png
+resources/favicon-192.png
