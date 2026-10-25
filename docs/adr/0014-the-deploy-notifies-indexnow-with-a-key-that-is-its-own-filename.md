@@ -18,17 +18,22 @@ crawlers), plus four indexes this repository had never told anything about itsel
 
 The route not taken is Cloudflare's, and it deserves recording because it is real
 and it is abandoned at the same time. The FAQ still says "Cloudflare offers native
-IndexNow integration", and the 2021 announcement is live: switching on **Crawler
-Hints** — "with the simple click of a button" — made Cloudflare send these same
-pings for you, tested with Bing and Yandex. Everything that would let a stranger
-press that button knowingly is gone: the Crawler Hints docs page 404s at all five
-addresses it could live at, the docs product index names neither Crawler Hints nor
-IndexNow, and the changelog's current page carries the word zero times. What the
-integration is on this zone tonight is not knowable from here — the token can list
-the zone, and answers `Unauthorized to access requested resource` for every zone
-setting. So this is rows ② and ⑥ decided the same way again: an undocumented
-control is not a load-bearing one, and a mechanism whose source sits beside the
-thing it notifies beats one that fires when somebody remembers to switch it on.
+IndexNow integration", and the 2021 announcement is live: "Crawler Hints Update:
+Cloudflare Supports IndexNow and Announces General Availability"
+(`blog.cloudflare.com/cloudflare-now-supports-indexnow`, 2021-10-18) says switching
+on Crawler Hints "with the simple click of a button" makes Cloudflare send these
+same pings for you, tested with Bing and Yandex. Everything that would let a
+stranger press that button knowingly is gone: the Crawler Hints docs page 404s at
+all five addresses it could live at, the docs product index names neither Crawler
+Hints nor IndexNow, and the changelog's current page carries the word zero times.
+What it is set to on this zone is not knowable from here: the token can list the
+zone and nothing inside it, and answers `Unauthorized to access requested resource`
+(9109) for a zone setting whether the name is real, like `min_tls_version`, or
+invented — a permission refused rather than a setting unknown, so no probe of this
+token reaches the answer. So this is rows ② and ⑥ decided the same way again: an
+undocumented control is not a load-bearing one, and a mechanism whose source sits
+beside the thing it notifies beats one that fires when somebody remembers to switch
+it on.
 
 The protocol is one string and one file. A key is 8 to 128 characters of `a-z`,
 `A-Z`, `0-9` and hyphens; it is published as `{key}.txt` at the root of the host

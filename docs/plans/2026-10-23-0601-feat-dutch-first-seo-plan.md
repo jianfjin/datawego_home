@@ -501,16 +501,17 @@ went in is one POST at the end of `deploy.js` naming the ten strings `dist/sitem
 started listing, into the hub's own roster — Bing, Naver, Seznam.cz, Yandex, Yep, plus an Amazon
 endpoint in the FAQ — and not into Google, which appears on neither list, so row ④ stays the only
 route there is to Google. Cloudflare's button was the cheaper way, and indexnow.org still says
-Cloudflare offers one; every Cloudflare page describing it is gone tonight — five docs paths answer
-404, the docs product index names neither Crawler Hints nor IndexNow, the changelog's current page
-carries the word zero times — and the zone setting answers `Unauthorized to access requested
-resource` for this token, which is rows ② and ⑥'s verdict taken one step further: the site notifies
-from a source file beside the thing it notifies, on every deploy, and non-fatally, because Pages
-already has the upload when the POST is tried. Measured the same night on `c4a948da`: the key file
-answers 200 `text/plain` at the root, 32 bytes equal to the key, on www in 0 hops and on the apex
-behind ①'s single 301; the first POST answered **HTTP 202**, the documented first answer while an
-engine fetches the key file, and the same command eight seconds later answered **HTTP 200**. The
-roster is 33 files and the suite 111 green.
+Cloudflare offers one; the page that proves it existed is a 2021 announcement, and every Cloudflare
+doc describing it is gone tonight — five docs paths answer 404, the docs product index names
+neither Crawler Hints nor IndexNow, the changelog's current page carries the word zero times —
+while the zone's own answer is `Unauthorized to access requested resource` (9109) for a setting
+whether its name is real or invented. Which is rows ② and ⑥'s verdict taken one step further: the
+site notifies from a source file beside the thing it notifies, on every deploy, and non-fatally,
+because Pages already has the upload when the POST is tried. Measured the same night on `c4a948da`:
+the key file answers 200 `text/plain` at the root, 32 bytes equal to the key, on www in 0 hops and
+on the apex behind ①'s single 301; the first POST answered **HTTP 202**, the documented first
+answer while an engine fetches the key file, and the same command eight seconds later answered
+**HTTP 200**. The roster is 33 files and the suite 111 green.
 
 
 ## Definition of Done
