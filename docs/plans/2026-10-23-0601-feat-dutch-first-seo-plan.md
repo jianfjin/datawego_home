@@ -423,17 +423,48 @@ address; what loses it is a visitor, who can neither read it, copy it, nor tap i
 `email-decode.min.js`, 1,239 B no build wrote. And the check written into row ⑥ to prove all of
 this searched for `[email protected]` with a space, which the bytes never contained: it answered
 0 with the row open and would answer 0 with the row closed, and so proved nothing. Replaced below
-with the `&#160;` form, which answers 2 today.
+with the `&#160;` form, which answered 2 that day and answers 0 now — read the note that follows
+before touching anything in this row.
 
+>
+**Read again 2026-10-25, and one of those two findings is now the site's own.** Everything below
+was measured with the owner's API token, which carries `#zone:read` and nothing else: every
+`/zones/{zone}/settings/…`, `/pagerules` and `/rulesets` read answers 9109 or 10000, so this
+repository cannot see a single dashboard value and the rows were rewritten from what the bytes
+do and do not do, checked against Cloudflare's own pages.
+
+**⑥ turned out to cost nothing.** Twelve repeat requests, the apex, the `*.pages.dev` address and
+all ten sitemap URLs return the build's bytes unchanged — `sha256(served) == sha256(dist)` ten
+times over, `mailto:info@datawego.nl` twice per Page, `__cf_email__` and `email-decode.min.js`
+nowhere, `content-encoding: br` intact so nothing is asking for `no-transform`. The note above
+that says the served Pages "do not carry the `mailto:` links this build wrote" is therefore not
+true of the site as it answers today, and the word-count consequence it draws — 679 against 677,
+and two variants crossing R16 at 702 and 701 — does not appear in any byte this measurement
+touched. Cloudflare's page on the feature says both halves of that are normal: it is on by
+default, and it does not apply to HTML "specifically added by a Worker", which is how Pages
+answers. So row ⑥ asks for nothing, `<!--email_off-->` is not needed, and the only live risk is
+a future Cloudflare change, which the `mailto:` assertion already in `dist/` would catch.
+
+**② is the whole of the remaining robots.txt work, and it has one switch.** The managed block
+arrives whatever the requester claims: 3,287 B for `Mozilla/5.0`, `Googlebot/2.1`,
+`Google-Extended`, bare `curl` and an empty User-Agent alike, so Google reads the `GoogleOther`
+refusal exactly as a retrieval crawler does. Cloudflare's robots.txt page (updated 2026-10-22)
+names the condition precisely: managed directives are prepended **only while `Enable Bot
+Preference Sync` is on and at least one Search / Agent / Training policy is Block or Disallow**,
+and "with every policy set to allow, there is nothing to prepend and your robots.txt is served
+unchanged". Since ours is not served unchanged, Sync is on. The row below used a door that does
+not exist; the real one is the `Enable Bot Preference Sync` toggle inside `Configure AI bot
+policies`, and the same page promises the effect "within a few seconds" with no cache purge,
+which is what makes 611 B the check rather than a reload ritual.
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 
 | # | Where | Do | Verified by |
 |---|---|---|---|
-| ① | Cloudflare Pages → datawego → Settings → Domains, on the `datawego.nl` row | apex→www redirect ON. `docs/datawego.nl.txt` shows both `datawego.nl` and `www.datawego.nl` already CNAME to `datawego.pages.dev`, so **no DNS record changes**: this is the Pages toggle, and if it is absent on this plan a zone Redirect Rule does the same job | `curl -sI https://datawego.nl/ \| grep -i '^location'` → `https://www.datawego.nl/` |
-| ② | Cloudflare zone → Settings → Crawl hints → Content signals (managed robots.txt) | **`None`** — or `Overwrite` if the signals themselves must stay. Today it runs as `Append`: 130 injected lines in front of our intact 25, which is why the size reads 3,287 B, and one of those lines refuses `GoogleOther` that ADR 0007 exists to welcome | `curl -s $W/robots.txt \| wc -c` → 611 and `Content-Signal` gone, **and** `curl -s $W/robots.txt \| awk '/^User-agent: GoogleOther$/{getline; if ($0 ~ /^Disallow/) print "still refused at line " NR}'` → empty (today it prints `still refused at line 78`) |
+| ① | Cloudflare zone → Rules → **Redirect Rules** → Create rule | Rule: `Hostname` equals `datawego.nl` → forward to `https://www.datawego.nl{http.request.uri.path}`, status 301, preserve query. Free plan allows 10 rules. Do **not** touch `datawego.nl` in Pages → Settings → Domains: it is the CNAME that makes the apex reachable at all, and removing it costs a dead host rather than a redirect. Measured 2026-10-25: the apex still answers 200 with the same bytes and a canonical pointing at www, so nothing about the site is broken yet — this row only decides whether one address or two are the address | `curl -sI https://datawego.nl/ \| grep -i '^location'` → `https://www.datawego.nl/` (today: no `location`, HTTP 200) |
+| ② | Cloudflare zone → Security → **Settings** → filter *Bot traffic* → `Configure AI bot policies` → **`Enable Bot Preference Sync`** | Switch it **off** and Save. Leave the three policies themselves alone — off is the state that already welcomes Google, and Sync is what bolts on the 130 managed lines that refuse `GoogleOther`. (The path this row used to give, `Settings → Crawl hints → Content signals`, is not a door that exists.) If Sync has to stay on, set every policy to allow for the same result | `curl -s $W/robots.txt \| wc -c` → 611 **and** `curl -s $W/robots.txt \| awk '/^User-agent: GoogleOther$/{getline; if ($0 ~ /^Disallow/) print "still refused at line " NR}'` → empty (today 3,287 and `still refused at line 78`) |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
-| ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem | it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
-| ⑥ | Cloudflare domain → Scrape Shield → Email Address Obfuscation | **off.** It rewrites both `mailto:info@datawego.nl` anchors into `/cdn-cgi/l/email-protection#…` and their link text into `[email&#160;protected]`, so the address stops being readable, copyable or tappable for a visitor; that is the `mailto:` assertion under R1/R2 it breaks, and it is false as served. It is not a crawler problem — the graph's `"email"` survives untouched, because the feature rewrites anchors rather than JSON strings — and the earlier claim that a retrieval crawler never sees the contact route was too strong. It also injects `email-decode.min.js`, 1,239 B this build never wrote. **Since U10 it decides a word count as well**: one visible word becomes two, twice per Page, so a variant authored at 700 serves 702 (R16). | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → 2 and `curl -s $W/dataplatforms/ \| grep -c 'email&#160;protected'` → 0 (today they are 0 and 2) |
+| ④ | Google Search Console | verify `datawego.nl` as a **domain** property — one TXT at `_googlehosted.datawego.nl` in this Cloudflare zone covers every subdomain, and the zone already carries TXT records so the record type is not a problem — it prefers the domain property over the URL-prefix one because R2 makes www the only host that answers, and a URL-prefix property would have to be claimed twice; then submit the sitemap and request indexing for the live addresses | GSC sitemap status + coverage |
+| ⑥ | Cloudflare zone → Security → Settings → filter *Client-side abuse* → Email Address Obfuscation | **Nothing to do.** It is on by default and it does not rewrite this site's HTML, because Pages answers through a Worker (see the note above), so all ten addresses ship both `mailto:` links intact. This row stays here as the tripwire: if a future deployment starts shipping `[email&#160;protected]`, the fix is this toggle off, not `<!--email_off-->` in the source | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → **2** and `curl -s $W/ \| grep -c 'cdn-cgi/l/email-protection'` → **0** (both true today) |
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
 
 ## Definition of Done
