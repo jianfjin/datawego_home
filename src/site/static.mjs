@@ -1,11 +1,15 @@
 /**
- * The four files a site owes that are not pages.
+ * The five files a site owes that are not pages.
  *
  * `robots.txt`, `sitemap.xml`, `_headers` and `404.html` are the four answers a
  * crawler gets before it reads a word of copy, and none of them is a Page: no
  * language variants, no dictionary, no chrome to split. So they are built here,
  * from the two places that already know what they say — the route table (every
- * address, ADR 0005) and the register (every company fact, ADR 0011).
+ * address, ADR 0005) and the register (every company fact, ADR 0011). The fifth,
+ * `BingSiteAuth.xml`, is built from nothing: it is the bytes Bing issued, carried
+ * to the root unchanged, because Pages has no "upload to root" and a hand-placed
+ * `dist/` file would break the rule that the build writes everything the host
+ * answers.
  *
  * Why generated rather than dropped into `dist/` by hand, in one line each:
  *
@@ -239,8 +243,31 @@ export function notFoundPage({ source, cssHref, boot }) {
  * file, because the alternative is a second answer to "what is the site's
  * stylesheet called", and that answer is a hash.
  */
-export function staticAssets({ robotsSource, notFoundSource, cssHref, boot }) {
+/**
+ * BingSiteAuth.xml: ⑤'s ownership check, byte for byte.
+ *
+ * Bing's file authentication asks for one thing: this exact file, at the site
+ * root, fetchable without JavaScript. The build carries it unchanged and
+ * refuses anything else under this name — a hand-edit here (a lowercase key, a
+ * comment, a second user among ours) is a file this build will not carry, and
+ * the failure would arrive as silence in a dashboard no one watches monthly.
+ */
+export function bingAuthFile(authored) {
+  const trimmed = authored.trimEnd();
+  if (!/^<\?xml version="1\.0"\?>\n<users>\n\t<user>[0-9A-F]{32}<\/user>\n<\/users>$/.test(trimmed)) {
+    return {
+      contents: "",
+      problems: [
+        'src/BingSiteAuth.xml is not the file Bing issues: `<?xml version="1.0"?>`, then `<users>` holding exactly one tab-indented `<user>` key of 32 uppercase hex digits — anything else by this name is a hand-edit the checker will not read as issued',
+      ],
+    };
+  }
+  return { contents: `${trimmed}\n`, problems: [] };
+}
+
+export function staticAssets({ robotsSource, notFoundSource, bingAuthSource, cssHref, boot }) {
   const robots = robotsFile(robotsSource);
+  const bingAuth = bingAuthFile(bingAuthSource);
   const sitemap = sitemapXml();
   const headers = headersFile();
   const notFound = notFoundPage({ source: notFoundSource, cssHref, boot });
@@ -250,6 +277,7 @@ export function staticAssets({ robotsSource, notFoundSource, cssHref, boot }) {
     ["sitemap.xml", sitemap],
     ["_headers", headers],
     ["404.html", notFound],
+    ["BingSiteAuth.xml", bingAuth],
   ];
 
   return {

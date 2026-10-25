@@ -63,7 +63,7 @@ import {
   themeBoot,
   visibleStrings,
 } from "../src/site/page.mjs";
-import { headersFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
+import { bingAuthFile, headersFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
 import { DIAGRAM_HEAD, applyDiagramHead } from "../src/site/diagrams.mjs";
 
 const ROOT = new URL("..", import.meta.url);
@@ -563,6 +563,7 @@ test("a runtime that moved into the chrome instead of being deleted is still cau
 // not-found page routes without asking to be indexed.
 
 const ROBOT_SOURCE = read("src/robots.txt");
+const BING_SOURCE = read("src/BingSiteAuth.xml");
 const NOT_FOUND = read("src/404.nl.html");
 
 const robotCase = (edit) => robotsFile(edit(ROBOT_SOURCE));
@@ -633,6 +634,27 @@ test("the two edits that would undo ADR 0007 stop the build", () => {
   const group = robotsFile("User-agent: FooBot\nUser-agent: *\nAllow: /\nDisallow: /docs/\n");
   refused(group, "the trap ADR 0007 records", "a rule that belongs to a group of two agents");
   refused(group, "the 119KB generated answer", "the same rule, read as the * group's");
+});
+
+test("BingSiteAuth.xml ships as Bing issued it, and a hand-edit stops the build", () => {
+  // ⑤: the file is the verification. Nothing here is derived — the build's whole
+  // job is to carry these bytes to a root a checker can fetch without JavaScript.
+  const { contents, problems } = bingAuthFile(BING_SOURCE);
+  assert.deepEqual(problems, [], "the issued file is on speaking terms with its own guard");
+  assert.equal(contents, `${BING_SOURCE.trimEnd()}\n`, "the bytes are what Bing handed over, plus one line ending");
+  assert.match(contents, /<user>[0-9A-F]{32}<\/user>/, "the key is 32 uppercase hex digits, which is what the checker compares");
+
+  // The three edits someone would call an improvement: tidy the casing, annotate
+  // the provenance, or import a second account's key beside ours. Each turns the
+  // file into something the checker will not read as issued, and that failure is
+  // silent for months, so it is loud here instead.
+  refused(bingAuthFile(BING_SOURCE.toLowerCase()), "not the file Bing issues", "a lowercased key");
+  refused(bingAuthFile(BING_SOURCE.replace("<users>", "<!-- from Bing -->\n<users>")), "not the file Bing issues", "a comment above the users");
+  refused(
+    bingAuthFile(BING_SOURCE.replace("</users>", "\t<user>0123456789ABCDEF0123456789ABCDEF</user>\n</users>")),
+    "not the file Bing issues",
+    "a second user, whose key would be someone else's claim on this site",
+  );
 });
 
 test("sitemap.xml is the route table, and nothing else", () => {
@@ -766,7 +788,7 @@ test("an address maps to a file the way Pages expects to find it", () => {
   assert.equal(distPath(diagram, "nl"), path.join("docs", "pharm-platform.html"));
 });
 
-test("today's build is ten page documents, four diagrams, the chrome, the routing map, the images, and four files that are not pages", () => {
+test("today's build is ten page documents, four diagrams, the chrome, the routing map, the images, and five files that are not pages", () => {
   const { files } = generate();
   const pages = [...files.keys()].filter((name) => name.endsWith("index.html")).sort();
   assert.deepEqual(
@@ -852,14 +874,14 @@ test("today's build is ten page documents, four diagrams, the chrome, the routin
     "the footer mark costs under a tenth of the PNG it replaced",
   );
 
-  for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html"]) {
+  for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html", "BingSiteAuth.xml"]) {
     assert.ok(files.has(name), `${name} was not written, so a crawler reads whatever the host has in its place`);
     assert.ok(!name.endsWith(".html") || name === "404.html", `${name}: only the not-found page is HTML outside the address tree (R7)`);
   }
   assert.equal(
     files.size,
-    31,
-    "ten page documents, four diagrams, three chrome files, nine artwork files, the routing map and the four statics — the build wrote something else, and the count is where it shows",
+    32,
+    "ten page documents, four diagrams, three chrome files, nine artwork files, the routing map and the five statics — the build wrote something else, and the count is where it shows",
   );
   for (const name of artwork) {
     const logical = name.replace(/\.[0-9a-f]{12}\./, ".").replace("assets/", "resources/");
