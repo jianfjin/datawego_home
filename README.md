@@ -35,8 +35,8 @@ disk has no origin for that request to come from.
   ```sh
   cp .dev.vars.example .dev.vars   # fill in the local values; .dev.vars is never committed
   node deploy.js --skip-deploy     # generate dist/ — both variants, the chrome, diagrams,
-  #   robots.txt, sitemap.xml, 404.html, _headers, _routes.json, and the artwork
-  #   the pages ask for
+  #   robots.txt, sitemap.xml, 404.html, _headers, _routes.json, the two files the
+  #   search engines asked for, and the artwork the pages ask for
   python3 tools/derive-images.py   # re-derive hero widths, icons and the social card,
   #   by hand, when the brand artwork under resources/ changes
   npx wrangler pages dev           # http://localhost:8788 — page and Function together
@@ -54,6 +54,8 @@ disk has no origin for that request to come from.
 ├── src/                         # the generator's input, all of it
 │   ├── robots.txt               #   the crawler-facing stance, authored rather than inherited (ADR 0007)
 │   ├── 404.nl.html              #   the page behind an unknown address, in Dutch (R7)
+│   ├── BingSiteAuth.xml         #   the bytes Bing issued, kept where the build can put them
+│   ├── indexnow.key             #   the one string that is a filename *and* its contents (ADR 0014)
 │   ├── pages/                   #   the other four Pages, as Bodies: their sections and
 │   │                          #   their sentences, no chrome — the copy lives here (ADR 0013, U10)
 │   │   ├── dataplatforms.html
@@ -66,7 +68,7 @@ disk has no origin for that request to come from.
 │       ├── page.mjs             #   one source in, one address out: retirement, translation, chrome
 │       ├── chrome.mjs           #   the home document edited into every other Page, by anchor (ADR 0013)
 │       ├── pages.mjs            #   which Body is which Page's, and the sentence each one's is about
-│       ├── static.mjs           #   the four files that are not pages, derived from the two above
+│       ├── static.mjs           #   the six files that are not pages: four derived, two carried
 │       ├── diagrams.mjs         #   the Diagram pages' titles and descriptions, which archify would overwrite
 │       ├── graph.mjs            #   the structured data, every value read out of the modules above
 │       ├── dictionary.mjs       #   the source's `var NL`, read as build input
@@ -78,7 +80,7 @@ disk has no origin for that request to come from.
 │       └── _contact.js          #   shared guards; an underscore file is not a route
 ├── tests/                       # node --test over the endpoint's guards, the routes, the build
 ├── wrangler.toml                # Pages config: dist/ as the output, the KV binding
-├── deploy.js                    # runs the generator, then deploys (--skip-deploy generates only)
+├── deploy.js                    # runs the generator, deploys, then notifies IndexNow (--skip-deploy generates only)
 ├── dist/                        # what actually gets uploaded — generated, never edited
 │   ├── index.html               #   the Dutch address: the root is Dutch (ADR 0001)
 │   ├── en/index.html            #   the English one
@@ -87,12 +89,15 @@ disk has no origin for that request to come from.
 │   ├── robots.txt               #   the stance above, plus the Sitemap: line only the build knows
 │   ├── sitemap.xml              #   every live indexable variant, read off the route table (R6)
 │   ├── 404.html                 #   so an unknown address is a 404 in Dutch, not the homepage (R7)
+│   ├── BingSiteAuth.xml         #   the issued file, at the root Bing's checker asks for
+│   ├── <indexnow-key>.txt       #   IndexNow's key, in the name and the bytes the protocol asks for
 │   ├── _headers                 #   HSTS, immutable chrome, and never an X-Robots-Tag (ADR 0006, R9)
 │   ├── docs/                    #   the four Diagram pages: their drawings, this repository's head (ADR 0002)
 │   ├── assets/                  #   chrome *and* artwork, every file named by its contents
 │   └── (no resources/)          #   what no page asks for is not uploaded
 ├── tools/
 │   ├── derive-images.py         # brand artwork in, shipped artwork out; run by hand, never by the build
+│   ├── indexnow.mjs             # one POST over the sitemap's own addresses; run by the deploy
 │   └── wordcount.mjs            # the four Pages counted, in both variants; reads, never writes
 ├── resources/                   # the authored originals, and what derives from them
 │   ├── DataWeGo_banner3.png     #   the hero's source art: 2056x491, 1.4MB, never shipped
@@ -112,7 +117,7 @@ disk has no origin for that request to come from.
     ├── etl-dataflow-with-prepass.html
     ├── marketing-research-swarm.html
     ├── ehr-platform-architecture-with-prepass.html
-    ├── adr/                     #   the decisions, one file each (0001-0013)
+    ├── adr/                     #   the decisions, one file each (0001-0014)
     ├── plans/                   #   the plans those decisions were taken in
     ├── DESIGN-HANDOFF.md        #   implementation contract (fidelity, responsive matrix)
     └── DESIGN-MANIFEST.json     #   machine-readable map of screens, tokens, interactions
@@ -252,6 +257,17 @@ extension to it. The route table declares the address, `build.mjs` says which fi
 it, and the page links the address through a token the table fills in. The older spelling is
 not forgotten, only not repeated: it arrives at the same drawing by way of the platform's own
 308, and it would cost a redirect per click to keep naming it here (ADR 0005, R19).
+
+**What a deploy says out loud.** `deploy.js` ends with one POST to the IndexNow hub: the
+ten addresses `dist/sitemap.xml` just started listing, and the key that authorizes them,
+which the same build publishes as the root file named after it. The engines sharing the
+hub — Bing, Naver, Seznam.cz, Yandex, Yep — learn about a change the evening it happens.
+Google is not among them, and its route stays the sitemap and Search Console (ADR 0014).
+Cloudflare once offered to send this ping for anybody who switched on Crawler Hints;
+indexnow.org still says so, and Cloudflare's docs no longer have the page, so the site
+says it from source, on every deploy. The step is non-fatal on purpose: Pages has the
+upload before the POST is tried, and a warning carrying `node tools/indexnow.mjs` is the
+right size of noise for a deploy that worked.
 
 ## Repository housekeeping
 

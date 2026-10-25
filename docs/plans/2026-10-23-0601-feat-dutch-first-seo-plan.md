@@ -483,14 +483,35 @@ deleting it drops ownership. It is public by design, a lookup key and not a cred
 it grants nothing — and the check that proved it published rather than merely saved was
 `dig +short TXT datawego.nl` answering three records where it had answered two. One more thing the
 next step will notice: the sitemap Google fetches carries ten `<loc>` and no `<lastmod>`, which is
-`src/site/static.mjs`'s deliberate omission rather than an oversight, **All six dashboard rows are closed as of 2026-10-25, and with them R18.** The last words of ④ and ⑤
-are owner-confirmed inside the two dashboards — the one evidence this repository cannot hold directly.
-What it can hold it re-read tonight: ten `<loc>` fetched from the live sitemap, 611 B of robots, the
-issued auth file at `28197e2d…` on both hosts. A `site:datawego.nl` query answered empty the same
-evening, which at under an hour from submission is the expected nothing, not a finding: from here the
-checklist stops being the work. What is left of SEO is what no row ever covered — the indexes choosing
-which of the ten to show, a matter of days and months, not of settings.
-guarded by its own test.
+`src/site/static.mjs`'s deliberate omission rather than an oversight, guarded by its own test.
+
+**All six dashboard rows are closed as of 2026-10-25, and with them R18.** The last words of ④ and
+⑤ are owner-confirmed inside the two dashboards — the one evidence this repository cannot hold
+directly. What it can hold it re-read tonight: ten `<loc>` fetched from the live sitemap, 611 B of
+robots, the issued auth file at `28197e2d…` on both hosts. A `site:datawego.nl` query answered
+empty the same evening, which at under an hour from submission is the expected nothing, not a
+finding: from here the checklist stops being the work. What is left of SEO is what no row ever
+covered — the indexes choosing which of the ten to show, a matter of days and months, not of
+settings.
+
+**IndexNow followed the checklist out of the door (ADR 0014, 2026-10-25).** No requirement asked
+for it; the FAQ supplied the reason to add it anyway — without a ping it takes an engine "days to
+weeks" to notice a change, and a Pages deploy rewrites ten addresses nobody has linked yet. What
+went in is one POST at the end of `deploy.js` naming the ten strings `dist/sitemap.xml` just
+started listing, into the hub's own roster — Bing, Naver, Seznam.cz, Yandex, Yep, plus an Amazon
+endpoint in the FAQ — and not into Google, which appears on neither list, so row ④ stays the only
+route there is to Google. Cloudflare's button was the cheaper way, and indexnow.org still says
+Cloudflare offers one; every Cloudflare page describing it is gone tonight — five docs paths answer
+404, the docs product index names neither Crawler Hints nor IndexNow, the changelog's current page
+carries the word zero times — and the zone setting answers `Unauthorized to access requested
+resource` for this token, which is rows ② and ⑥'s verdict taken one step further: the site notifies
+from a source file beside the thing it notifies, on every deploy, and non-fatally, because Pages
+already has the upload when the POST is tried. Measured the same night on `c4a948da`: the key file
+answers 200 `text/plain` at the root, 32 bytes equal to the key, on www in 0 hops and on the apex
+behind ①'s single 301; the first POST answered **HTTP 202**, the documented first answer while an
+engine fetches the key file, and the same command eight seconds later answered **HTTP 200**. The
+roster is 33 files and the suite 111 green.
+
 
 ## Definition of Done
 
