@@ -134,6 +134,7 @@ function generate() {
     const statics = staticAssets({
       robotsSource: read("src/robots.txt"),
       bingAuthSource: read("src/BingSiteAuth.xml"),
+      indexNowKeySource: read("src/indexnow.key"),
       notFoundSource: read("src/404.nl.html"),
       cssHref: sharedStylesheet(files, problems),
       boot,

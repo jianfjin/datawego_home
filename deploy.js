@@ -59,6 +59,16 @@ function main() {
     cwd: projectRoot
   });
 
+  // Step 3: tell IndexNow what just went live (ADR 0014). The notification is
+  // not part of the deploy's success — the content already answers — so a
+  // refused POST warns with its own retry command and the deploy still says done.
+  log('📣 Notifying IndexNow...', 'yellow');
+  try {
+    execSync(`"${process.execPath}" tools/indexnow.mjs`, { cwd: projectRoot, stdio: 'inherit' });
+  } catch {
+    log('⚠  IndexNow notification failed — the site is live regardless. Retry: node tools/indexnow.mjs', 'red');
+  }
+
   log('✨ Deployment complete! https://www.datawego.nl/', 'green');
 }
 

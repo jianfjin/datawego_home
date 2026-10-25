@@ -1,5 +1,5 @@
 /**
- * The five files a site owes that are not pages.
+ * The six files a site owes that are not pages.
  *
  * `robots.txt`, `sitemap.xml`, `_headers` and `404.html` are the four answers a
  * crawler gets before it reads a word of copy, and none of them is a Page: no
@@ -10,6 +10,10 @@
  * to the root unchanged, because Pages has no "upload to root" and a hand-placed
  * `dist/` file would break the rule that the build writes everything the host
  * answers.
+ * The sixth is named by its contents: `{key}.txt` at the root is how the IndexNow
+ * engines check the key that authorizes this site's URL notifications, and the build
+ * carries the one string in `src/indexnow.key` into both the name and the bytes
+ * (ADR 0014) — so no deploy can notify over a key nobody hosted.
  *
  * Why generated rather than dropped into `dist/` by hand, in one line each:
  *
@@ -265,9 +269,33 @@ export function bingAuthFile(authored) {
   return { contents: `${trimmed}\n`, problems: [] };
 }
 
-export function staticAssets({ robotsSource, notFoundSource, bingAuthSource, cssHref, boot }) {
+/**
+ * {key}.txt: IndexNow's permission slip, named by what it contains.
+ *
+ * The protocol asks for one string (8 to 128 of a-z, A-Z, 0-9 or hyphen) that
+ * appears twice — in the root filename and in its bytes — and engines that share
+ * the key fetch the pair to accept a notification. So the guard is the alphabet,
+ * and the emit is identity: a key that needs trimming, padding or casing is a
+ * key whose file no engine will find under the name the submission just claimed.
+ */
+export function indexNowFile(authoredKey) {
+  const key = authoredKey.trim();
+  if (!/^[A-Za-z0-9-]{8,128}$/.test(key)) {
+    return {
+      name: "",
+      contents: "",
+      problems: [
+        "src/indexnow.key is not a key IndexNow accepts: 8 to 128 characters of a-z, A-Z, 0-9 or hyphens, and nothing else — the root file is named after this exact string, so a stray character here renames nothing and fails everything",
+      ],
+    };
+  }
+  return { name: `${key}.txt`, contents: key, problems: [] };
+}
+
+export function staticAssets({ robotsSource, notFoundSource, bingAuthSource, indexNowKeySource, cssHref, boot }) {
   const robots = robotsFile(robotsSource);
   const bingAuth = bingAuthFile(bingAuthSource);
+  const indexNow = indexNowFile(indexNowKeySource);
   const sitemap = sitemapXml();
   const headers = headersFile();
   const notFound = notFoundPage({ source: notFoundSource, cssHref, boot });
@@ -278,10 +306,11 @@ export function staticAssets({ robotsSource, notFoundSource, bingAuthSource, css
     ["_headers", headers],
     ["404.html", notFound],
     ["BingSiteAuth.xml", bingAuth],
+    ...(indexNow.name ? [[indexNow.name, indexNow]] : []),
   ];
 
   return {
     files: new Map(entries.map(([name, part]) => [name, part.contents])),
-    problems: entries.flatMap(([, part]) => part.problems),
+    problems: [...entries.flatMap(([, part]) => part.problems), ...indexNow.problems],
   };
 }

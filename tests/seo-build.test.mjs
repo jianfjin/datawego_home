@@ -63,7 +63,7 @@ import {
   themeBoot,
   visibleStrings,
 } from "../src/site/page.mjs";
-import { bingAuthFile, headersFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
+import { bingAuthFile, headersFile, indexNowFile, notFoundPage, robotsFile, sitemapXml, staticAssets } from "../src/site/static.mjs";
 import { DIAGRAM_HEAD, applyDiagramHead } from "../src/site/diagrams.mjs";
 
 const ROOT = new URL("..", import.meta.url);
@@ -564,6 +564,7 @@ test("a runtime that moved into the chrome instead of being deleted is still cau
 
 const ROBOT_SOURCE = read("src/robots.txt");
 const BING_SOURCE = read("src/BingSiteAuth.xml");
+const INDEXNOW_KEY = read("src/indexnow.key").trim();
 const NOT_FOUND = read("src/404.nl.html");
 
 const robotCase = (edit) => robotsFile(edit(ROBOT_SOURCE));
@@ -634,6 +635,19 @@ test("the two edits that would undo ADR 0007 stop the build", () => {
   const group = robotsFile("User-agent: FooBot\nUser-agent: *\nAllow: /\nDisallow: /docs/\n");
   refused(group, "the trap ADR 0007 records", "a rule that belongs to a group of two agents");
   refused(group, "the 119KB generated answer", "the same rule, read as the * group's");
+});
+
+test("the IndexNow key names its own root file, and a key outside the alphabet stops the build", () => {
+  // ADR 0014: one string, written once, appearing twice — as the filename and as
+  // the bytes. Engines fetch the pair before accepting a notification, so the
+  // guard is the protocol's alphabet, and everything else is identity.
+  const out = indexNowFile(read("src/indexnow.key"));
+  assert.deepEqual(out.problems, [], "the key is on speaking terms with its own guard");
+  assert.equal(out.name, `${INDEXNOW_KEY}.txt`, "the file is named after the key, not beside it");
+  assert.equal(out.contents, INDEXNOW_KEY, "the file is the key with nothing added — no newline, no XML, no comment");
+
+  refused(indexNowFile("abcdefg\n"), "not a key IndexNow accepts", "seven characters where eight is the floor");
+  refused(indexNowFile("deadbeef_cafebabe\n"), "not a key IndexNow accepts", "an underscore the alphabet does not carry");
 });
 
 test("BingSiteAuth.xml ships as Bing issued it, and a hand-edit stops the build", () => {
@@ -788,7 +802,7 @@ test("an address maps to a file the way Pages expects to find it", () => {
   assert.equal(distPath(diagram, "nl"), path.join("docs", "pharm-platform.html"));
 });
 
-test("today's build is ten page documents, four diagrams, the chrome, the routing map, the images, and five files that are not pages", () => {
+test("today's build is ten page documents, four diagrams, the chrome, the routing map, the images, and six files that are not pages", () => {
   const { files } = generate();
   const pages = [...files.keys()].filter((name) => name.endsWith("index.html")).sort();
   assert.deepEqual(
@@ -874,14 +888,15 @@ test("today's build is ten page documents, four diagrams, the chrome, the routin
     "the footer mark costs under a tenth of the PNG it replaced",
   );
 
-  for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html", "BingSiteAuth.xml"]) {
+  for (const name of ["robots.txt", "sitemap.xml", "_headers", "404.html", "BingSiteAuth.xml", `${INDEXNOW_KEY}.txt`]) {
     assert.ok(files.has(name), `${name} was not written, so a crawler reads whatever the host has in its place`);
+    if (name === `${INDEXNOW_KEY}.txt`) assert.equal(files.get(name), INDEXNOW_KEY, "the key file says something other than the key it is named for");
     assert.ok(!name.endsWith(".html") || name === "404.html", `${name}: only the not-found page is HTML outside the address tree (R7)`);
   }
   assert.equal(
     files.size,
-    32,
-    "ten page documents, four diagrams, three chrome files, nine artwork files, the routing map and the five statics — the build wrote something else, and the count is where it shows",
+    33,
+    "ten page documents, four diagrams, three chrome files, nine artwork files, the routing map and the six statics — the build wrote something else, and the count is where it shows",
   );
   for (const name of artwork) {
     const logical = name.replace(/\.[0-9a-f]{12}\./, ".").replace("assets/", "resources/");
