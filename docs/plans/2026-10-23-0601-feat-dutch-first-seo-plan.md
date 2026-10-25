@@ -426,7 +426,6 @@ this searched for `[email protected]` with a space, which the bytes never contai
 with the `&#160;` form, which answered 2 that day and answers 0 now — read the note that follows
 before touching anything in this row.
 
->
 **Read again 2026-10-25, and one of those two findings is now the site's own.** Everything below
 was measured with the owner's API token, which carries `#zone:read` and nothing else: every
 `/zones/{zone}/settings/…`, `/pagerules` and `/rulesets` read answers 9109 or 10000, so this
@@ -456,13 +455,14 @@ unchanged". Since ours is not served unchanged, Sync is on. The row below used a
 not exist; the real one is the `Enable Bot Preference Sync` toggle inside `Configure AI bot
 policies`, and the same page promises the effect "within a few seconds" with no cache purge,
 which is what makes 611 B the check rather than a reload ritual.
->
+
 **① and ② closed the same day.** Both owner rows above were executed and re-measured on the live
 network: ② first, then ①, and the ten URLs walked again between the two. What the walk proved is
 that nothing moved underneath — 10/10 still `sha256(served) == sha256(dist)`, `mailto:` twice per
 Page, the 404 still Dutch (`Pagina niet gevonden`, 3,069 B) — so the two rows are the whole of the
 dashboard's effect on this site, and ⑥'s absence from that list is now a measured fact rather
 than an expectation. Only ④ and ⑤ remain, and neither is a Cloudflare setting.
+
 ## Dashboard Checklist (owner — the agent can only verify the effect)
 
 | # | Where | Do | Verified by |
@@ -470,9 +470,20 @@ than an expectation. Only ④ and ⑤ remain, and neither is a Cloudflare settin
 | ① | Cloudflare zone → Rules → **Redirect Rules** → Create rule | **DONE 2026-10-25.** Rule `apex → www (301)`: Request URL `http*://datawego.nl/*` → Target URL `https://www.datawego.nl/${2}`, 301, *Preserve query string* ticked. **`${2}`, not `${1}`** — the `http*` half of the pattern is the first wildcard, so a `${1}` target redirects every address on the apex to the bare homepage. Verified as deployed: `https://datawego.nl/`, `/dataplatforms/`, `/en/healthcare-life-sciences/`, `/robots.txt`, `/nope-404/` and plain `http://datawego.nl/dataplatforms/` each answer 301 in **one hop** with path and `?gclid=` intact; `www` and the `*.pages.dev` alias still answer 200 with no bounce, so the rule did not capture the host it redirects to. R2's "www is the only host that answers" is now true of the network rather than only of the canonical | `curl -sI https://datawego.nl/ \| grep -i '^location'` → `https://www.datawego.nl/` — **done: it does** |
 | ② | Cloudflare zone → Security → **Settings** → filter *Bot traffic* → `Configure AI bot policies` → **`Enable Bot Preference Sync`** | **DONE 2026-10-25** — Sync switched off, the three policies left alone. `robots.txt` now answers 611 B with `sha256(served) == sha256(dist/robots.txt)` (`df38cbb2159e98fc`), identical to `Mozilla/5.0`, `curl` and an empty User-Agent alike, and `GoogleOther` is back to `Allow: /`, which is what ADR 0007 asked for. The 130 managed lines and the `Content-Signal` line are gone, so nothing in the response contradicts anything in ours | `curl -s $W/robots.txt \| wc -c` → 611 **and** `curl -s $W/robots.txt \| awk '/^User-agent: GoogleOther$/{getline; if ($0 ~ /^Disallow/) print "still refused at line " NR}'` → empty — **both do now** |
 | ③ | Cloudflare Pages → Settings → Build & functions / not-found behaviour | must **not** force `index.html`; `404.html` answers | unknown path → 404 |
-| ④ | Google Search Console | Create a **Domain** property `datawego.nl`. Verification is a single **TXT record on the apex itself** — Google's instructions are to leave the host/name field blank or `@`, value `google-site-verification=<token>` — and verifying the root covers `www` and every other subdomain, which is why one record is enough here. The name this row used to give, `_googlehosted.datawego.nl`, is not a record Google asks for; it was a mangled recollection of `dv.googlehosted.com`, which is the *target of the CNAME alternative*, and the CNAME route is not ours: Google uses it only where the property's host is a CNAME to a parent domain, and `www` points at `datawego.pages.dev`, which is not a parent of `datawego.nl`. So TXT, at the zone apex, which is Cloudflare (NS `bonnie`/`miguel.ns.cloudflare.com`, confirmed by resolution, and the apex already carries two TXT records — Brevo and SPF — so the type is routine here). **Add it as its own record; never append the token to the SPF line, which must stay a single `v=spf1` string.** Then submit `sitemap.xml` and request indexing for the ten live addresses | `dig +short TXT datawego.nl` shows the token at the apex (today: `brevo-code:…` and `v=spf1 …` only) → GSC verification succeeds; sitemap status → 10 URLs found |
+| ④ | Google Search Console | **Verified 2026-10-25** as a Domain property `datawego.nl` (`sc-domain:datawego.nl`) — and the record was **not** pasted by hand: Search Console recognised Cloudflare as the domain provider and wrote the TXT into the zone itself, Google's "for some domains, Google can add the record for you" path. Where that integration is absent, the fallback is one **TXT record on the apex itself** — name blank or `@`, value `google-site-verification=<token>` — added **as its own record, never appended to the SPF line, which must stay a single `v=spf1` string**; verifying the root covers `www` and every other subdomain, which is why one record is enough here. The name this row used to give, `_googlehosted.datawego.nl`, was never a record Google asked for: a mangled `dv.googlehosted.com`, which is the *target of the CNAME alternative*, and the CNAME route is not ours — Google uses it only where the property's host CNAMEs to a parent domain, and `www` points at `datawego.pages.dev`, which is not a parent of `datawego.nl`. Remaining here: submit the sitemap, then request indexing for the ten live addresses | `dig +short TXT datawego.nl` → three records, one of them `google-site-verification=…` — TXT order is not stable across resolvers (the zone's own servers answer it first, `@8.8.8.8` second), so match on content, not position — and GSC → Ownership verification → "You are a verified owner" — **it does, and it says so** |
 | ⑥ | Cloudflare zone → Security → Settings → filter *Client-side abuse* → Email Address Obfuscation | **Nothing to do.** It is on by default and it does not rewrite this site's HTML, because Pages answers through a Worker (see the note above), so all ten addresses ship both `mailto:` links intact. This row stays here as the tripwire: if a future deployment starts shipping `[email&#160;protected]`, the fix is this toggle off, not `<!--email_off-->` in the source | `curl -s $W/ \| grep -c 'mailto:info@datawego.nl'` → **2** and `curl -s $W/ \| grep -c 'cdn-cgi/l/email-protection'` → **0** (both true today) |
 | ⑤ | Bing Webmaster Tools | import from GSC, confirm sitemap (ChatGPT retrieval leans on the Bing index — ADR 0007 welcomes those crawlers) | Bing sitemap accepted |
+
+**④ verified the same evening, by a route this row did not predict.** The record appeared in the
+zone before anyone read this row, because Search Console recognised Cloudflare as the domain
+provider and added the TXT itself. The value Google wrote —
+`google-site-verification=VKb4j5gTQunYHRWjup9WDZT6dIHiWCh09szkUyhgnPE` — is a permanent asset of
+the zone from now on: Google's instructions are explicit that it stays after verification, and
+deleting it drops ownership. It is public by design, a lookup key and not a credential — knowing
+it grants nothing — and the check that proved it published rather than merely saved was
+`dig +short TXT datawego.nl` answering three records where it had answered two. One more thing the
+next step will notice: the sitemap Google fetches carries ten `<loc>` and no `<lastmod>`, which is
+`src/site/static.mjs`'s deliberate omission rather than an oversight, guarded by its own test.
 
 ## Definition of Done
 
